@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v3.0 - 專業實戰版</title>
+    <title>災害救助行動指揮系統 v5.0 - 終極整合版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,43 +16,55 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Chart.js (預留未來擴充) -->
-    
     <style>
         /* 基礎設定 */
         :root {
-            --primary: #2563eb;
+            --primary: #0f172a; /* Slate 900 */
+            --accent: #2563eb;  /* Blue 600 */
             --danger: #dc2626;
             --success: #16a34a;
             --warning: #ca8a04;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", "Segoe UI", Roboto, sans-serif; }
         
-        /* 滾動條優化 */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        
-        /* 特效類 */
+        /* 玻璃擬態與動畫 */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
         .login-pattern {
             background-color: #f8fafc;
-            background-image: linear-gradient(135deg, #e2e8f0 25%, transparent 25%), linear-gradient(225deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(315deg, #e2e8f0 25%, transparent 25%);
-            background-position:  10px 0, 10px 0, 0 0, 0 0;
-            background-size: 20px 20px;
-            background-repeat: repeat;
+            background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
         }
+        
+        /* 地圖模擬背景 */
         .map-bg {
-            background-image: url('https://api.mapbox.com/styles/v1/mapbox/light-v11/static/121.5,24.0,9/1200x800?access_token=none');
+            background-image: url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/121.5,24.0,10,0/1200x800?access_token=none');
             background-size: cover;
             background-position: center;
         }
+        
+        /* SOS 按鈕特效 */
+        .sos-btn {
+            background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: sos-pulse 1.5s infinite;
+        }
+        @keyframes sos-pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Toast 動畫 */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-hidden">
@@ -61,7 +73,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // --- 模擬數據資料庫 ---
+        // --- Mock Data ---
         const INITIAL_INCIDENTS = [
             { id: 'inc-1', name: '花蓮 0403 地震專案', level: '2級 (縣市)', status: '執行中', date: '2024-04-03', commander: '林局長' },
             { id: 'inc-2', name: '南投土石流預警專案', level: '1級 (鄉鎮)', status: '準備中', date: '2024-05-12', commander: '陳區長' },
@@ -71,11 +83,43 @@
             { id: 'ic', name: '指揮官 (IC)', icon: 'shield-check', color: 'bg-red-600', desc: '全權指揮、決策下達' },
             { id: 'ops', name: '作業組 (Ops)', icon: 'activity', color: 'bg-blue-600', desc: '搜救、醫療、工程' },
             { id: 'log', name: '後勤組 (Log)', icon: 'package', color: 'bg-orange-500', desc: '物資、運輸、通訊' },
-            { id: 'fin', name: '財務組 (Fin)', icon: 'dollar-sign', color: 'bg-emerald-600', desc: '採購、捐款、核銷' },
             { id: 'vol', name: '志工隊 (Vol)', icon: 'users', color: 'bg-slate-600', desc: '人力支援、民眾服務' },
         ];
 
-        // --- 組件: 通用 Modal ---
+        const INITIAL_MY_GEAR = [
+            { id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' },
+            { id: 'g2', name: '多功能鉗', type: '自攜', status: '持有中', condition: 'B' },
+        ];
+        
+        const INITIAL_BORROWED_GEAR = [
+            { id: 'b1', name: '無線電對講機 (Motorola)', source: '後勤組', borrowedAt: '10:30', status: '使用中' }
+        ];
+
+        const LIFE_SUPPORT_FACILITIES = [
+            { id: 'f1', name: 'A區熱食站', type: 'food', status: '供餐中', capacity: '剩餘 50 份', location: '體育館入口' },
+            { id: 'f2', name: 'B區行動淋浴間', type: 'shower', status: '排隊中', capacity: '等待 15 分', location: '操場北側' },
+            { id: 'f3', name: '志工休息帳 (C區)', type: 'sleep', status: '額滿', capacity: '0 床', location: '第二校區' },
+            { id: 'f4', name: '行動充電站', type: 'power', status: '可用', capacity: '80%', location: '指揮所旁' },
+        ];
+
+        // --- Helper Components ---
+        const ToastContainer = ({ toasts, removeToast }) => (
+            <div className="fixed bottom-20 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+                {toasts.map(toast => (
+                    <div key={toast.id} className="toast-enter pointer-events-auto bg-white border border-slate-200 shadow-xl rounded-xl p-4 flex items-center gap-3 min-w-[300px]">
+                        <div className={`p-2 rounded-full ${toast.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                            <i data-lucide={toast.type === 'success' ? 'check' : 'info'} width="16"></i>
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold text-slate-800">{toast.title}</p>
+                            <p className="text-xs text-slate-500">{toast.message}</p>
+                        </div>
+                        <button onClick={() => removeToast(toast.id)} className="text-slate-400 hover:text-slate-600"><i data-lucide="x" width="14"></i></button>
+                    </div>
+                ))}
+            </div>
+        );
+
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
@@ -96,83 +140,66 @@
             );
         };
 
-        // --- 組件: 狀態標籤 ---
-        const StatusBadge = ({ status, type = 'default' }) => {
+        const PageHeader = ({ title, icon, color, btnText, onBtnClick }) => (
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                    <i data-lucide={icon} className={color}></i> {title}
+                </h2>
+                {btnText && (
+                    <button onClick={onBtnClick} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition-all">
+                        <i data-lucide="plus" width="16"></i> {btnText}
+                    </button>
+                )}
+            </div>
+        );
+
+        const StatusBadge = ({ status }) => {
             const colors = {
                 '逾時': 'bg-red-100 text-red-700 border-red-200',
                 '已報到': 'bg-green-100 text-green-700 border-green-200',
                 '預約中': 'bg-blue-50 text-blue-600 border-blue-200',
-                '執行中': 'bg-blue-600 text-white border-blue-600',
-                '緊急': 'bg-red-600 text-white border-red-600',
-                '查證中': 'bg-orange-100 text-orange-700 border-orange-200',
-                '已澄清': 'bg-emerald-100 text-emerald-700 border-emerald-200',
                 '待處理': 'bg-slate-100 text-slate-600 border-slate-200',
+                '運送中': 'bg-blue-100 text-blue-700 border-blue-200',
+                '已送達': 'bg-green-100 text-green-700 border-green-200',
+                '緊急': 'bg-red-600 text-white border-red-600',
             };
             const style = colors[status] || 'bg-slate-100 text-slate-600 border-slate-200';
-            return (
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${style} shadow-sm whitespace-nowrap`}>
-                    {status}
-                </span>
-            );
+            return <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${style} shadow-sm whitespace-nowrap`}>{status}</span>;
         };
 
-        // --- 登入畫面 ---
+        // --- Views ---
+
         const LoginView = ({ onLogin }) => {
             useEffect(() => { lucide.createIcons(); }, []);
             return (
                 <div className="h-screen w-full flex items-center justify-center login-pattern p-4">
-                    <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-5 bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200 min-h-[600px]">
-                        
-                        {/* 左側資訊區 */}
-                        <div className="lg:col-span-2 bg-slate-900 text-white p-10 flex flex-col justify-between relative overflow-hidden">
-                            <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop')] bg-cover bg-center mix-blend-overlay"></div>
-                            <div className="relative z-10">
-                                <div className="w-14 h-14 bg-red-600 rounded-2xl flex items-center justify-center shadow-lg mb-6">
-                                    <i data-lucide="shield-alert" class="text-white w-8 h-8"></i>
-                                </div>
-                                <h1 className="text-3xl font-black mb-2 tracking-tight">救災指揮系統 <span class="text-red-500">v3.0</span></h1>
-                                <p className="text-slate-400 text-sm font-medium">Disaster Relief Command System</p>
+                    <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div className="hidden md:block">
+                            <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg mb-6">
+                                <i data-lucide="shield-check" className="text-white w-10 h-10"></i>
                             </div>
-                            <div className="relative z-10 space-y-4">
-                                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 backdrop-blur-sm">
-                                    <div className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">系統狀態</div>
-                                    <div className="flex items-center gap-2 text-green-400 font-bold text-sm">
-                                        <span className="relative flex h-3 w-3">
-                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                                        </span>
-                                        全線正常運作
-                                    </div>
-                                </div>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    本系統符合 ISO 22320 應變管理標準。請選擇授權身份進行登入，所有操作皆會被稽核記錄。
-                                </p>
-                            </div>
+                            <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">災害救助行動<br/>指揮系統 <span className="text-blue-600 font-normal">v5.0</span></h1>
+                            <p className="text-slate-500 leading-relaxed max-w-sm mb-8 font-medium">
+                                整合 ICS 指揮體系與資材循環機制。請選擇您的身份進入系統。
+                            </p>
                         </div>
-
-                        {/* 右側登入區 */}
-                        <div className="lg:col-span-3 p-10 flex flex-col justify-center bg-white">
-                            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                請選擇登入身份
-                                <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full">SAML 2.0 驗證</span>
-                            </h2>
-                            <div className="grid grid-cols-1 gap-3">
+                        <div className="bg-white border border-slate-200 p-8 rounded-[2.5rem] shadow-2xl">
+                            <h3 className="text-xl font-bold text-slate-800 mb-6">身份登入</h3>
+                            <div className="space-y-3">
                                 {ROLES.map(role => (
                                     <button 
                                         key={role.id}
                                         onClick={() => onLogin(role)}
-                                        className="group relative flex items-center gap-4 p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-500 hover:shadow-md transition-all text-left"
+                                        className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-blue-500 hover:shadow-lg transition-all text-left group"
                                     >
-                                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105 ${role.color}`}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${role.color}`}>
                                             <i data-lucide={role.icon}></i>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-slate-800 text-base">{role.name}</p>
-                                            <p className="text-xs text-slate-500">{role.desc}</p>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-slate-800 group-hover:text-blue-600">{role.name}</p>
+                                            <p className="text-[10px] text-slate-400 font-medium">{role.desc}</p>
                                         </div>
-                                        <div className="absolute right-4 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">
-                                            <i data-lucide="arrow-right"></i>
-                                        </div>
+                                        <i data-lucide="chevron-right" className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all"></i>
                                     </button>
                                 ))}
                             </div>
@@ -182,386 +209,293 @@
             );
         };
 
-        // --- 主應用程式 ---
+        const VolunteersView = ({ data, onAdd, onUpdate, onDelete }) => (
+            <div className="max-w-6xl mx-auto animate-in fade-in">
+                <PageHeader title="志工人力管理" icon="users" color="text-blue-600" btnText="登錄志工" onBtnClick={onAdd} />
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200">
+                            <tr>
+                                <th className="px-6 py-4">姓名 / 聯絡</th>
+                                <th className="px-6 py-4">技能標籤</th>
+                                <th className="px-6 py-4">預計報到</th>
+                                <th className="px-6 py-4">狀態</th>
+                                <th className="px-6 py-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {data.map(res => (
+                                <tr key={res.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="px-6 py-4">
+                                        <div className="font-bold text-slate-800">{res.name}</div>
+                                        <div className="text-xs text-slate-400 font-mono">{res.phone}</div>
+                                    </td>
+                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs border border-slate-200">{res.skill}</span></td>
+                                    <td className="px-6 py-4 text-slate-500 font-mono text-xs">{new Date(res.time).toLocaleString()}</td>
+                                    <td className="px-6 py-4"><StatusBadge status={res.status} /></td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {res.status !== '已報到' && (
+                                                <button onClick={() => onUpdate(res.id, '已報到')} className="px-2 py-1 bg-green-50 text-green-600 rounded border border-green-200 text-xs font-bold hover:bg-green-100">簽到</button>
+                                            )}
+                                            <button onClick={() => onDelete(res.id)} className="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" width="16"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {data.length === 0 && <div className="p-8 text-center text-slate-400 italic">查無資料</div>}
+                </div>
+            </div>
+        );
+
+        const LogisticsView = ({ data, onAdd, onUpdate }) => (
+            <div className="max-w-6xl mx-auto animate-in fade-in">
+                <PageHeader title="後勤資源調度" icon="package" color="text-orange-500" btnText="提交需求" onBtnClick={onAdd} />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {data.map(req => (
+                        <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${req.priority === '緊急' ? 'bg-red-500' : 'bg-slate-300'}`}></div>
+                            <div className="flex justify-between items-start mb-3 pl-2">
+                                <h4 className="font-bold text-slate-800 text-lg">{req.item}</h4>
+                                <StatusBadge status={req.priority} />
+                            </div>
+                            <div className="pl-2 space-y-2 text-sm text-slate-500">
+                                <div className="flex justify-between">
+                                    <span>數量: <strong className="text-slate-800">{req.qty}</strong></span>
+                                    <span>來自: {req.from}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                                    <span className="text-xs font-bold text-blue-600">{req.status}</span>
+                                    <div className="flex gap-2">
+                                        {req.status === '待處理' && <button onClick={() => onUpdate(req.id, '運送中')} className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">核准</button>}
+                                        {req.status === '運送中' && <button onClick={() => onUpdate(req.id, '已送達')} className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700">簽收</button>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {data.length === 0 && <div className="col-span-full p-8 text-center text-slate-400 italic">查無需求單</div>}
+                </div>
+            </div>
+        );
+
+        // --- Main App ---
         const App = () => {
             const [currentUser, setCurrentUser] = useState(null);
-            const [activeTab, setActiveTab] = useState('map');
+            const [activeTab, setActiveTab] = useState('dashboard');
             const [activeIncidentId, setActiveIncidentId] = useState('inc-1');
             const [incidents, setIncidents] = useState(INITIAL_INCIDENTS);
-            const [searchTerm, setSearchTerm] = useState('');
-            
-            // 模擬數據狀態
+            const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
+            const [mapLayers, setMapLayers] = useState({ hazard: true, resources: true, volunteers: true });
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [modalType, setModalType] = useState(null);
+            const [toasts, setToasts] = useState([]);
+
+            // Data States
             const [reservations, setReservations] = useState([
                 { id: 1, name: '王小明', phone: '0912-345-678', skill: 'USAR 搜索', time: new Date().toISOString(), status: '逾時' },
                 { id: 2, name: '陳美麗', phone: '0922-111-222', skill: '護理師', time: new Date().toISOString(), status: '預約中' },
             ]);
             const [requests, setRequests] = useState([
                 { id: 1, item: '發電機 5KW', qty: 2, from: '前進指揮所', status: '待處理', priority: '緊急' },
-                { id: 2, item: '礦泉水', qty: 50, from: '體育館安置點', status: '運送中', priority: '普通' },
             ]);
-            
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [modalType, setModalType] = useState(null);
+            const [myGear, setMyGear] = useState(INITIAL_MY_GEAR);
+            const [borrowedGear, setBorrowedGear] = useState(INITIAL_BORROWED_GEAR);
 
-            // 效果: Lucide Icons 渲染
-            useEffect(() => { lucide.createIcons(); }, [currentUser, activeTab, isModalOpen]);
+            useEffect(() => { lucide.createIcons(); }, [currentUser, activeTab, isModalOpen, reservations, requests, myGear]);
 
-            if (!currentUser) return <LoginView onLogin={setCurrentUser} />;
+            const addToast = (title, message, type = 'success') => {
+                const id = Date.now();
+                setToasts([...toasts, { id, title, message, type }]);
+                setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+            };
+
+            const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); };
 
             const activeIncident = incidents.find(i => i.id === activeIncidentId);
 
-            // CRUD 操作模擬
-            const handleUpdateStatus = (list, setList, id, newStatus) => {
-                setList(list.map(item => item.id === id ? { ...item, status: newStatus } : item));
-            };
-
-            const handleDelete = (list, setList, id) => {
-                if(confirm('確定要刪除此項目嗎？')) {
-                    setList(list.filter(item => item.id !== id));
-                }
-            };
-
-            const handleAddItem = (e) => {
+            // Handlers
+            const handleVolunteerAdd = (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
-                // 這裡簡化處理，根據 modalType 新增到對應 state
-                if(modalType === 'volunteer') {
-                    setReservations([...reservations, { 
-                        id: Date.now(), 
-                        name: fd.get('name'), 
-                        phone: fd.get('phone'), 
-                        skill: fd.get('skill'), 
-                        time: new Date().toISOString(), 
-                        status: '預約中' 
-                    }]);
-                }
-                if(modalType === 'logistics') {
-                    setRequests([...requests, {
-                        id: Date.now(),
-                        item: fd.get('item'),
-                        qty: fd.get('qty'),
-                        from: fd.get('from'),
-                        status: '待處理',
-                        priority: fd.get('priority')
-                    }]);
-                }
+                setReservations([...reservations, { 
+                    id: Date.now(), name: fd.get('name'), phone: fd.get('phone'), skill: fd.get('skill'), time: new Date().toISOString(), status: '預約中' 
+                }]);
+                addToast('成功', '已新增志工資料');
                 setIsModalOpen(false);
             };
 
-            // 渲染內容區塊
-            const renderContent = () => {
-                // 通用頂部 (標題 + 搜尋 + 新增)
-                const PageHeader = ({ title, icon, color, btnText, type }) => (
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-3 rounded-xl text-white shadow-md ${color}`}>
-                                <i data-lucide={icon}></i>
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
-                                <p className="text-xs text-slate-500 font-medium">即時數據同步中 • 最後更新: {new Date().toLocaleTimeString()}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 w-full md:w-auto">
-                            <div className="relative flex-1 md:w-64">
-                                <i data-lucide="search" className="absolute left-3 top-2.5 text-slate-400 w-4 h-4"></i>
-                                <input 
-                                    type="text" 
-                                    placeholder="搜尋..." 
-                                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <button 
-                                onClick={() => { setModalType(type); setIsModalOpen(true); }}
-                                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
-                            >
-                                <i data-lucide="plus" width="16"></i> {btnText}
-                            </button>
-                        </div>
-                    </div>
-                );
+            const handleLogisticsAdd = (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                setRequests([...requests, {
+                    id: Date.now(), item: fd.get('item'), qty: fd.get('qty'), from: fd.get('from'), status: '待處理', priority: fd.get('priority')
+                }]);
+                addToast('成功', '需求單已提交');
+                setIsModalOpen(false);
+            };
 
-                if (activeTab === 'map') {
-                    return (
-                        <div className="h-full flex flex-col relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner bg-slate-100">
-                            {/* 地圖背景 */}
-                            <div className="absolute inset-0 map-bg opacity-60"></div>
-                            
-                            {/* 戰情儀表板 Overlay */}
-                            <div className="absolute inset-0 p-6 flex flex-col pointer-events-none">
-                                {/* 頂部數據卡 */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pointer-events-auto">
+            const handleGearReturn = (id, isDonating) => {
+                if (confirm(isDonating ? "確認歸還並捐贈此物資？" : "確認歸還物資？")) {
+                    setBorrowedGear(prev => prev.filter(g => g.id !== id));
+                    addToast('處理完成', isDonating ? "物資已轉為捐贈入庫" : "物資已歸還");
+                }
+            };
+
+            const renderContent = () => {
+                switch(activeTab) {
+                    case 'dashboard':
+                        return (
+                            <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div><h2 className="text-2xl font-black text-slate-800">指揮總覽</h2><p className="text-sm text-slate-500">花蓮 0403 震災專案 (二級開設)</p></div>
+                                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">連線穩定</span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                                     {[
-                                        { label: '目前投入人力', val: reservations.length + 120, unit: '人', icon: 'users', color: 'text-blue-600' },
-                                        { label: '避難所負荷', val: '82', unit: '%', icon: 'home', color: 'text-orange-500' },
-                                        { label: '待處理請求', val: requests.filter(r=>r.status==='待處理').length, unit: '件', icon: 'alert-circle', color: 'text-red-500' },
-                                        { label: '已澄清謠言', val: '14', unit: '則', icon: 'shield-check', color: 'text-green-600' },
+                                        { label: '前線人力', val: reservations.length + 120, unit: '人', icon: 'users', color: 'bg-blue-100 text-blue-600' },
+                                        { label: '待處理需求', val: requests.filter(r=>r.status==='待處理').length, unit: '件', icon: 'package', color: 'bg-orange-100 text-orange-600' },
+                                        { label: '資材循環率', val: '89', unit: '%', icon: 'recycle', color: 'bg-green-100 text-green-600' },
+                                        { label: '避難負荷', val: '82', unit: '%', icon: 'home', color: 'bg-red-100 text-red-600' },
                                     ].map((stat, idx) => (
-                                        <div key={idx} className="glass-panel p-4 rounded-xl flex items-center gap-4">
-                                            <div className={`p-3 rounded-lg bg-slate-50 border border-slate-100 ${stat.color}`}>
-                                                <i data-lucide={stat.icon}></i>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{stat.label}</p>
-                                                <p className="text-2xl font-black text-slate-800">{stat.val} <span className="text-xs text-slate-400 font-normal">{stat.unit}</span></p>
-                                            </div>
+                                        <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                                            <div className={`p-3 rounded-xl ${stat.color}`}><i data-lucide={stat.icon}></i></div>
+                                            <div><p className="text-xs text-slate-500 font-bold uppercase">{stat.label}</p><p className="text-2xl font-black text-slate-800">{stat.val} <span className="text-xs text-slate-400 font-normal">{stat.unit}</span></p></div>
                                         </div>
                                     ))}
                                 </div>
-                                
-                                {/* 側邊行動日誌 */}
-                                <div className="mt-auto ml-auto w-80 glass-panel rounded-xl overflow-hidden pointer-events-auto max-h-[400px] flex flex-col">
-                                    <div className="p-3 bg-slate-50 border-b border-slate-200 font-bold text-xs text-slate-600 flex justify-between">
-                                        <span>即時行動日誌</span>
-                                        <span className="text-blue-500 cursor-pointer hover:underline">匯出</span>
-                                    </div>
-                                    <div className="p-4 space-y-4 overflow-y-auto text-xs">
-                                        <div className="flex gap-3">
-                                            <span className="text-slate-400 font-mono">10:42</span>
-                                            <div><span className="font-bold text-slate-700">指揮官</span> 發布了二級開設命令</div>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <span className="text-slate-400 font-mono">10:38</span>
-                                            <div><span className="font-bold text-slate-700">後勤組</span> 運送 50 箱水至體育館</div>
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <span className="text-slate-400 font-mono">10:15</span>
-                                            <div className="text-red-600 font-bold">系統發布 CAP 警報：餘震注意</div>
+                                {/* 公告區 */}
+                                <div className="bg-slate-900 text-white rounded-2xl p-6 relative overflow-hidden">
+                                    <div className="relative z-10">
+                                        <h3 className="text-lg font-bold flex items-center gap-2 mb-4"><i data-lucide="bell" className="text-yellow-400"></i> 指揮中心公告 (CAP Alert)</h3>
+                                        <div className="space-y-3">
+                                            <div className="bg-white/10 p-3 rounded-xl border border-white/10 flex gap-3">
+                                                <span className="text-yellow-400 font-mono text-xs pt-1">10:45</span>
+                                                <div><p className="text-sm font-bold">餘震警報 (級別: 黃色)</p><p className="text-xs text-slate-300">預測未來 2 小時內可能有規模 4.0 以上餘震。</p></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                }
-
-                if (activeTab === 'volunteers') {
-                    const filtered = reservations.filter(r => r.name.includes(searchTerm));
-                    return (
-                        <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-                            <PageHeader title="志工人力管理" icon="users" color="bg-blue-600" btnText="登錄志工" type="volunteer" />
-                            
-                            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200">
-                                        <tr>
-                                            <th className="px-6 py-4">姓名 / 聯絡</th>
-                                            <th className="px-6 py-4">技能標籤</th>
-                                            <th className="px-6 py-4">預計報到</th>
-                                            <th className="px-6 py-4">狀態</th>
-                                            <th className="px-6 py-4 text-right">操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {filtered.map(res => (
-                                            <tr key={res.id} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-slate-800">{res.name}</div>
-                                                    <div className="text-xs text-slate-400 font-mono">{res.phone}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs border border-slate-200">{res.skill}</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-500 font-mono text-xs">
-                                                    {new Date(res.time).toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <StatusBadge status={res.status} />
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {res.status !== '已報到' && (
-                                                            <button 
-                                                                onClick={() => handleUpdateStatus(reservations, setReservations, res.id, '已報到')}
-                                                                className="px-2 py-1 bg-green-50 text-green-600 rounded border border-green-200 text-xs font-bold hover:bg-green-100"
-                                                            >
-                                                                簽到
-                                                            </button>
-                                                        )}
-                                                        <button 
-                                                            onClick={() => handleDelete(reservations, setReservations, res.id)}
-                                                            className="p-1 text-slate-400 hover:text-red-500"
-                                                        >
-                                                            <i data-lucide="trash-2" width="16"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        );
+                    case 'map':
+                        return (
+                            <div className="h-full relative bg-slate-200 w-full">
+                                <div className="absolute inset-0 map-bg opacity-80"></div>
+                                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur rounded-xl p-3 shadow-lg border border-slate-200 flex flex-col gap-2 z-10 w-40">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase mb-1">GIS 圖層控制</span>
+                                    {Object.keys(mapLayers).map(key => (
+                                        <button key={key} onClick={() => setMapLayers({...mapLayers, [key]: !mapLayers[key]})} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all ${mapLayers[key] ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
+                                            <span>{key === 'hazard' ? '🔴 危險熱區' : key === 'resources' ? '🔵 資源分佈' : '🟢 志工定位'}</span>
+                                            {mapLayers[key] && <i data-lucide="check" width="12"></i>}
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* 地圖標記模擬 */}
+                                {mapLayers.hazard && <div className="absolute top-1/3 left-1/4 animate-pulse"><div className="w-16 h-16 bg-red-500/30 rounded-full flex items-center justify-center border border-red-500"><i data-lucide="alert-triangle" className="text-red-600"></i></div><span className="absolute -bottom-6 left-2 bg-black text-white text-[10px] px-2 py-1 rounded">落石區</span></div>}
                             </div>
-                        </div>
-                    );
-                }
-
-                if (activeTab === 'logistics') {
-                    const filtered = requests.filter(r => r.item.includes(searchTerm));
-                    return (
-                        <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
-                            <PageHeader title="後勤資源調度" icon="package" color="bg-orange-500" btnText="提交需求" type="logistics" />
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                                {filtered.map(req => (
-                                    <div key={req.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${req.priority === '緊急' ? 'bg-red-500' : 'bg-slate-300'}`}></div>
-                                        <div className="flex justify-between items-start mb-3 pl-2">
-                                            <h4 className="font-bold text-slate-800 text-lg">{req.item}</h4>
-                                            <StatusBadge status={req.priority} />
-                                        </div>
-                                        <div className="pl-2 space-y-2 text-sm text-slate-500">
-                                            <div className="flex justify-between">
-                                                <span>數量: <strong className="text-slate-800">{req.qty}</strong></span>
-                                                <span>來自: {req.from}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                                                <span className="text-xs font-bold text-blue-600">{req.status}</span>
-                                                <div className="flex gap-2">
-                                                    {req.status === '待處理' && (
-                                                        <button 
-                                                            onClick={() => handleUpdateStatus(requests, setRequests, req.id, '運送中')}
-                                                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700"
-                                                        >
-                                                            核准
-                                                        </button>
-                                                    )}
-                                                    {req.status === '運送中' && (
-                                                        <button 
-                                                            onClick={() => handleUpdateStatus(requests, setRequests, req.id, '已送達')}
-                                                            className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700"
-                                                        >
-                                                            簽收
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                        );
+                    case 'volunteers':
+                        return <VolunteersView data={reservations} onAdd={() => { setModalType('volunteer'); setIsModalOpen(true); }} onUpdate={(id, status) => { setReservations(prev => prev.map(i => i.id === id ? { ...i, status } : i)); addToast('簽到成功', '狀態已更新'); }} onDelete={(id) => { if(confirm('刪除?')) setReservations(prev => prev.filter(i => i.id !== id)); }} />;
+                    case 'logistics':
+                        return <LogisticsView data={requests} onAdd={() => { setModalType('logistics'); setIsModalOpen(true); }} onUpdate={(id, status) => { setRequests(prev => prev.map(i => i.id === id ? { ...i, status } : i)); addToast('審核完成', `狀態更新為: ${status}`); }} />;
+                    case 'resource':
+                        return (
+                            <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
+                                <PageHeader title="資材循環系統" icon="recycle" color="text-green-600" btnText="掃碼借用/歸還" onBtnClick={() => alert('開啟相機掃碼...')} />
+                                <div className="mb-8"><h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">借用中資材 (Borrowed)</h3><div className="grid gap-4">{borrowedGear.map(item => (<div key={item.id} className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm flex justify-between items-center relative overflow-hidden"><div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div><div><p className="font-bold text-slate-800">{item.name}</p><p className="text-xs text-slate-500">來源: {item.source}</p></div><div className="flex gap-2"><button onClick={() => handleGearReturn(item.id, false)} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200">歸還</button><button onClick={() => handleGearReturn(item.id, true)} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 border border-green-200 flex items-center gap-1"><i data-lucide="heart" width="12"></i> 捐贈</button></div></div>))}</div></div>
+                                <div><h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">個人自攜清單</h3><div className="grid gap-4">{myGear.map(item => (<div key={item.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center"><div><p className="font-bold text-slate-700">{item.name}</p><p className="text-xs text-slate-500">狀態: {item.status}</p></div></div>))}</div></div>
                             </div>
-                        </div>
-                    );
+                        );
+                    case 'life':
+                        return (
+                            <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
+                                <PageHeader title="生活後勤保障" icon="tent" color="text-orange-500" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{LIFE_SUPPORT_FACILITIES.map(fac => (<div key={fac.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-3"><div className={`p-3 rounded-xl ${fac.type === 'food' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}><i data-lucide={fac.type === 'food' ? 'utensils' : fac.type === 'shower' ? 'droplets' : 'zap'}></i></div><div><h4 className="font-bold text-slate-800">{fac.name}</h4><p className="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="map-pin" width="10"></i> {fac.location}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${fac.status === '額滿' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{fac.status}</span></div><div className="flex justify-between items-end border-t border-slate-100 pt-3"><span className="text-xs font-bold text-slate-400">容量</span><span className="text-sm font-bold text-slate-800">{fac.capacity}</span></div></div>))}</div>
+                            </div>
+                        );
+                    default: return null;
                 }
+            };
 
-                // 其他模組可依此類推，為節省長度暫略
+            // Safety Bar Component (Persistent)
+            const SafetyBar = ({ onSOS }) => {
+                const [lastHeartbeat, setLastHeartbeat] = useState(0);
+                useEffect(() => { const i = setInterval(() => setLastHeartbeat(p => p + 1), 60000); return () => clearInterval(i); }, []);
                 return (
-                    <div className="flex items-center justify-center h-full text-slate-400">
-                        <div className="text-center">
-                            <i data-lucide="wrench" width="48" class="mx-auto mb-4 opacity-50"></i>
-                            <p>模組升級維護中...</p>
+                    <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-3 z-40 flex items-center justify-between shadow-2xl border-t border-slate-700">
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col"><span className="text-[10px] text-slate-400 uppercase tracking-widest">安全心跳</span><div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span><span className="text-sm font-bold text-green-400">連線中 ({lastHeartbeat}m 前)</span></div></div>
+                            <div className="h-8 w-px bg-slate-700 mx-2 hidden md:block"></div>
+                            <div className="hidden md:flex flex-col"><span className="text-[10px] text-slate-400 uppercase tracking-widest">目前位置</span><span className="text-xs font-mono text-slate-300">24.123N, 121.456E</span></div>
                         </div>
+                        <button onClick={onSOS} className="sos-btn rounded-full w-12 h-12 flex items-center justify-center font-black text-white text-xs border-2 border-white/20 hover:scale-105 transition-transform">SOS</button>
                     </div>
                 );
             };
 
+            if (!currentUser) return <LoginView onLogin={setCurrentUser} />;
+
             return (
                 <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
-                    {/* 側邊欄 */}
-                    <nav className="w-64 bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl">
+                    <ToastContainer toasts={toasts} removeToast={(id) => setToasts(p => p.filter(t => t.id !== id))} />
+                    
+                    {/* Navigation */}
+                    <nav className="w-20 md:w-64 bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl">
                         <div className="p-5 border-b border-slate-100 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-red-100">
-                                <i data-lucide="shield-check"></i>
-                            </div>
-                            <div>
-                                <h1 className="font-bold text-slate-800 leading-none">救助指揮 v3.0</h1>
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Pro Edition</span>
-                            </div>
+                            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg"><i data-lucide="command"></i></div>
+                            <div className="hidden md:block"><h1 className="font-bold text-slate-800 leading-none">ResQ v5.0</h1><span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kun Shan Univ.</span></div>
                         </div>
-
                         <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-                            <div className="px-4 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">主要功能</div>
+                            <div className="px-4 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">指揮中心</div>
+                            <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide="layout-dashboard" width="18"></i> <span className="hidden md:inline font-bold text-sm">指揮總覽</span></button>
+                            <button onClick={() => setActiveTab('map')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'map' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide="map" width="18"></i> <span className="hidden md:inline font-bold text-sm">戰情地圖</span></button>
                             
-                            <button onClick={() => setActiveTab('map')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'map' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                <i data-lucide="layout-dashboard" width="18"></i> <span className="font-bold text-sm">戰情儀表板</span>
-                            </button>
-                            <button onClick={() => setActiveTab('volunteers')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'volunteers' ? 'bg-white text-blue-600 border border-blue-100 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                <i data-lucide="users" width="18"></i> <span className="font-bold text-sm">志工人力</span>
-                                <span className="ml-auto bg-blue-100 text-blue-600 py-0.5 px-2 rounded-full text-[10px] font-bold">{reservations.length}</span>
-                            </button>
-                            <button onClick={() => setActiveTab('logistics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'logistics' ? 'bg-white text-orange-600 border border-orange-100 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                <i data-lucide="package" width="18"></i> <span className="font-bold text-sm">後勤調度</span>
-                            </button>
+                            <div className="px-4 mb-2 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">管理模組</div>
+                            <button onClick={() => setActiveTab('volunteers')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'volunteers' ? 'bg-white text-blue-600 border border-blue-100 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide="users" width="18"></i> <span className="hidden md:inline font-bold text-sm">人力管理</span></button>
+                            <button onClick={() => setActiveTab('logistics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'logistics' ? 'bg-white text-orange-600 border border-orange-100 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide="package" width="18"></i> <span className="hidden md:inline font-bold text-sm">後勤調度</span></button>
                             
-                            <div className="mt-6 px-4 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">專案管理</div>
-                            <div className="px-3">
-                                <select 
-                                    className="w-full bg-slate-50 border border-slate-200 text-xs p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700"
-                                    value={activeIncidentId}
-                                    onChange={(e) => setActiveIncidentId(e.target.value)}
-                                >
-                                    {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.name}</option>)}
-                                </select>
-                            </div>
+                            <div className="px-4 mb-2 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:block">個人與安全</div>
+                            <button onClick={() => setActiveTab('resource')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'resource' ? 'bg-white text-green-600 border border-green-100 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide="recycle" width="18"></i> <span className="hidden md:inline font-bold text-sm">資材循環</span></button>
+                            <button onClick={() => setActiveTab('life')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'life' ? 'bg-white text-purple-600 border border-purple-100 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide="coffee" width="18"></i> <span className="hidden md:inline font-bold text-sm">生活後勤</span></button>
                         </div>
-
-                        {/* 底部使用者資訊 */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md ${currentUser.color}`}>
-                                    <span className="font-bold text-sm">{currentUser.name[0]}</span>
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="font-bold text-sm text-slate-800 truncate">{currentUser.name}</p>
-                                    <p className="text-xs text-slate-500 truncate">{activeIncident?.name}</p>
-                                </div>
-                                <button onClick={() => setCurrentUser(null)} className="p-2 text-slate-400 hover:text-red-500 transition-colors" title="登出">
-                                    <i data-lucide="log-out" width="18"></i>
-                                </button>
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs ${currentUser.color}`}>{currentUser.name[0]}</div>
+                                <div className="hidden md:block overflow-hidden"><p className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</p><button onClick={handleLogout} className="text-[10px] text-red-500 font-bold hover:underline">登出系統</button></div>
                             </div>
                         </div>
                     </nav>
 
-                    {/* 主內容區 */}
-                    <main className="flex-1 flex flex-col min-w-0 bg-white">
-                        <header className="h-16 px-8 flex items-center justify-between border-b border-slate-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-                            <div className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${activeIncident?.status === '執行中' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span>
-                                <span className="font-bold text-sm text-slate-700">{activeIncident?.level}開設</span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all relative">
-                                    <i data-lucide="bell" width="20"></i>
-                                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                                </button>
-                                <div className="h-8 w-px bg-slate-200"></div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-slate-800">指揮官: {activeIncident?.commander}</p>
-                                    <p className="text-[10px] text-slate-500 font-mono">24.5°N, 121.5°E</p>
-                                </div>
-                            </div>
-                        </header>
-                        <div className="flex-1 p-6 overflow-hidden">
+                    {/* Main Content */}
+                    <main className="flex-1 flex flex-col min-w-0 relative">
+                        <div className="flex-1 overflow-y-auto pb-20">
                             {renderContent()}
                         </div>
+                        <SafetyBar onSOS={() => setIsSOSModalOpen(true)} />
                     </main>
 
                     {/* Modals */}
                     <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'volunteer' ? '登錄新志工' : '新增後勤需求'}>
-                        <form onSubmit={handleAddItem} className="space-y-4">
+                        <form onSubmit={modalType === 'volunteer' ? handleVolunteerAdd : handleLogisticsAdd} className="space-y-4">
                             {modalType === 'volunteer' ? (
                                 <>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">姓名</label><input name="name" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="輸入全名" /></div>
-                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">聯絡電話</label><input name="phone" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="09xx-xxx-xxx" /></div>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">姓名</label><input name="name" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="輸入全名" /></div>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">聯絡電話</label><input name="phone" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="09xx-xxx-xxx" /></div>
                                     </div>
-                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">專業技能</label><input name="skill" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="如：緊急救護 (EMT-1)" /></div>
+                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">專業技能</label><input name="skill" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="如：緊急救護 (EMT-1)" /></div>
                                 </>
                             ) : (
                                 <>
-                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">需求品項</label><input name="item" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="如：睡袋" /></div>
+                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">需求品項</label><input name="item" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="如：睡袋" /></div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">數量</label><input name="qty" type="number" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1">優先級</label>
-                                            <select name="priority" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none">
-                                                <option>普通</option>
-                                                <option>高</option>
-                                                <option>緊急</option>
-                                            </select>
-                                        </div>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">數量</label><input name="qty" type="number" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">優先級</label><select name="priority" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none"><option>普通</option><option>高</option><option>緊急</option></select></div>
                                     </div>
-                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">需求單位</label><input name="from" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="如：A區安置點" /></div>
+                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">需求單位</label><input name="from" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="如：A區安置點" /></div>
                                 </>
                             )}
                             <div className="pt-4 flex justify-end gap-3">
@@ -570,6 +504,17 @@
                             </div>
                         </form>
                     </Modal>
+
+                    {isSOSModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-red-900/90 backdrop-blur-md animate-in fade-in">
+                            <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in">
+                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce"><i data-lucide="alert-octagon" width="40" height="40"></i></div>
+                                <h3 className="text-2xl font-black text-slate-900 mb-2">確認發送求救訊號？</h3>
+                                <p className="text-sm text-slate-500 mb-6">將傳送精確座標與錄音至最近的救援小組與指揮中心。</p>
+                                <div className="space-y-3"><button onClick={() => { alert('求救訊號已發送！'); setIsSOSModalOpen(false); }} className="w-full py-4 bg-red-600 text-white rounded-xl font-black text-lg shadow-lg hover:bg-red-700">立即發送 SOS</button><button onClick={() => setIsSOSModalOpen(false)} className="w-full py-3 text-slate-400 font-bold hover:text-slate-600">取消 (誤觸)</button></div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
