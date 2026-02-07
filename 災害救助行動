@@ -1,0 +1,443 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Map, Users, Truck, ShieldCheck, AlertTriangle, Package, 
+  DollarSign, Navigation, Radio, WifiOff, Clock, Layers,
+  Search, CheckCircle2, XCircle, Activity, ChevronRight, 
+  Menu, Heart, FileText, Home, ShieldAlert, Plus, X
+} from 'lucide-react';
+
+// --- 初期 Mock Data ---
+const INITIAL_INCIDENTS = [
+  { id: 'inc-1', name: '花蓮 0403 地震專案', level: '2級 (縣市)', status: '執行中', date: '2024-04-03' },
+  { id: 'inc-2', name: '南投土石流預警專案', level: '1級 (鄉鎮)', status: '準備中', date: '2024-05-12' },
+];
+
+const INITIAL_RESERVATIONS = [
+  { id: 'R1', incidentId: 'inc-1', name: '王小明', skill: 'USAR 搜索', time: new Date(Date.now() - 7200000).toISOString(), status: '逾時', phone: '0912345678' },
+];
+
+const INITIAL_SHELTERS = [
+  { id: 'S1', incidentId: 'inc-1', name: '花蓮體育館避難所', capacity: 500, current: 420, water: '充足', power: '穩定', needs: ['保暖毯'] },
+];
+
+const INITIAL_RUMORS = [
+  { id: 'RM1', incidentId: 'inc-1', content: '蘇花公路全線斷裂', status: '已澄清', truth: '部分坍方，單線通車', source: '社群平台 X' },
+];
+
+const INITIAL_REQUESTS = [
+  { id: 'LR1', incidentId: 'inc-1', item: '柴油 500L', from: 'A區工兵隊', status: '運送中', priority: '緊急' },
+];
+
+// --- 通用彈窗組件 ---
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+          <h3 className="font-bold text-lg">{title}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+};
+
+// --- 主要應用程式 ---
+export default function App() {
+  // 核心狀態管理
+  const [incidents, setIncidents] = useState(INITIAL_INCIDENTS);
+  const [activeIncidentId, setActiveIncidentId] = useState('inc-1');
+  const [activeTab, setActiveTab] = useState('map');
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  
+  const [reservations, setReservations] = useState(INITIAL_RESERVATIONS);
+  const [shelters, setShelters] = useState(INITIAL_SHELTERS);
+  const [rumors, setRumors] = useState(INITIAL_RUMORS);
+  const [requests, setRequests] = useState(INITIAL_REQUESTS);
+
+  // Modal 控制
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState(null); // 'incident', 'volunteer', 'shelter', 'rumor', 'logistics'
+
+  const activeIncident = incidents.find(i => i.id === activeIncidentId) || incidents[0];
+
+  // 離線偵測
+  useEffect(() => {
+    const handleStatus = () => setIsOffline(!navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
+
+  // --- 新增功能實作 ---
+  const handleAddIncident = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const newInc = {
+      id: `inc-${Date.now()}`,
+      name: formData.get('name'),
+      level: formData.get('level'),
+      status: '執行中',
+      date: new Date().toISOString().split('T')[0],
+    };
+    setIncidents([...incidents, newInc]);
+    setActiveIncidentId(newInc.id);
+    closeModal();
+  };
+
+  const handleAddItem = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const commonData = { id: `item-${Date.now()}`, incidentId: activeIncidentId };
+
+    switch (modalType) {
+      case 'volunteer':
+        setReservations([...reservations, { ...commonData, name: formData.get('name'), skill: formData.get('skill'), status: '預約中', time: new Date().toISOString() }]);
+        break;
+      case 'shelter':
+        setShelters([...shelters, { ...commonData, name: formData.get('name'), capacity: parseInt(formData.get('cap')), current: 0, water: '未知', power: '未知', needs: [] }]);
+        break;
+      case 'rumor':
+        setRumors([...rumors, { ...commonData, content: formData.get('content'), status: '查證中', truth: '', source: formData.get('source') }]);
+        break;
+      case 'logistics':
+        setRequests([...requests, { ...commonData, item: formData.get('item'), from: formData.get('from'), status: '待處理', priority: formData.get('priority') }]);
+        break;
+      default: break;
+    }
+    closeModal();
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalType(null);
+  };
+
+  const openModal = (type) => {
+    setModalType(type);
+    setIsModalOpen(true);
+  };
+
+  // 渲染當前內容
+  const renderContent = () => {
+    const filteredRes = reservations.filter(r => r.incidentId === activeIncidentId);
+    const filteredShelters = shelters.filter(s => s.incidentId === activeIncidentId);
+    const filteredRumors = rumors.filter(r => r.incidentId === activeIncidentId);
+    const filteredReqs = requests.filter(r => r.incidentId === activeIncidentId);
+
+    switch (activeTab) {
+      case 'map': return <MapView />;
+      case 'volunteers': return <VolunteerModule data={filteredRes} onAdd={() => openModal('volunteer')} />;
+      case 'shelters': return <ShelterModule data={filteredShelters} onAdd={() => openModal('shelter')} />;
+      case 'rumors': return <RumorModule data={filteredRumors} onAdd={() => openModal('rumor')} />;
+      case 'logistics': return <LogisticsModule data={filteredReqs} onAdd={() => openModal('logistics')} />;
+      case 'fin': return <FinanceModule />;
+      default: return <MapView />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+      {/* Sidebar */}
+      <nav className="w-20 md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+        <div className="p-4 border-b border-slate-800 flex items-center gap-3">
+          <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+            <ShieldCheck size={24} />
+          </div>
+          <div className="hidden md:block">
+            <h1 className="font-bold text-sm leading-tight text-white">救助指揮 v1.9</h1>
+            <p className="text-[10px] text-slate-500 uppercase">Dynamic Management</p>
+          </div>
+        </div>
+
+        <div className="flex-1 py-4 overflow-y-auto">
+          <NavItem active={activeTab === 'map'} icon={<Map size={18}/>} label="圖資指揮層" onClick={() => setActiveTab('map')} />
+          <NavItem active={activeTab === 'volunteers'} icon={<Users size={18}/>} label="志工管理" onClick={() => setActiveTab('volunteers')} />
+          <NavItem active={activeTab === 'shelters'} icon={<Home size={18}/>} label="避難所管理" onClick={() => setActiveTab('shelters')} />
+          <NavItem active={activeTab === 'logistics'} icon={<Package size={18}/>} label="後勤調度" onClick={() => setActiveTab('logistics')} />
+          <NavItem active={activeTab === 'rumors'} icon={<ShieldAlert size={18}/>} label="謠言治理" onClick={() => setActiveTab('rumors')} />
+          <NavItem active={activeTab === 'fin'} icon={<DollarSign size={18}/>} label="財務透明" onClick={() => setActiveTab('fin')} />
+        </div>
+
+        {/* 專案切換器 */}
+        <div className="p-4 border-t border-slate-800">
+          <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">切換救災專案</label>
+          <select 
+            value={activeIncidentId} 
+            onChange={(e) => setActiveIncidentId(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 text-xs p-2 rounded mb-2"
+          >
+            {incidents.map(inc => (
+              <option key={inc.id} value={inc.id}>{inc.name}</option>
+            ))}
+          </select>
+          <button 
+            onClick={() => openModal('incident')}
+            className="w-full flex items-center justify-center gap-1 py-2 bg-blue-600/10 text-blue-400 text-xs rounded border border-blue-600/30 hover:bg-blue-600/20 transition-all"
+          >
+            <Plus size={14} /> 新增救災專案
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <header className="h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold">{activeIncident?.name}</h2>
+            <span className="px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded text-[10px] border border-blue-700 font-bold uppercase">{activeIncident?.level}</span>
+          </div>
+          <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full ${isOffline ? 'bg-orange-900/20 text-orange-500 border border-orange-800' : 'bg-green-900/20 text-green-500 border border-green-800'}`}>
+            <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-orange-500' : 'bg-green-500 animate-pulse'}`}></div>
+            {isOffline ? '離線操作中' : '系統即時同步'}
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto">
+          {renderContent()}
+        </div>
+      </main>
+
+      {/* --- 全域 Modals --- */}
+      <Modal isOpen={isModalOpen && modalType === 'incident'} onClose={closeModal} title="建立新救災專案">
+        <form onSubmit={handleAddIncident} className="space-y-4">
+          <FormGroup label="專案名稱" name="name" placeholder="例如：1002 颱風救災" required />
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">災害分級</label>
+            <select name="level" className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-sm outline-none focus:border-blue-500">
+              <option>1級 (鄉鎮)</option>
+              <option>2級 (縣市)</option>
+              <option>3級 (跨縣市)</option>
+              <option>特級 (國際支援)</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all mt-4">啟動救援專案</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isModalOpen && modalType === 'volunteer'} onClose={closeModal} title="新增志工預約">
+        <form onSubmit={handleAddItem} className="space-y-4">
+          <FormGroup label="志工姓名" name="name" required />
+          <FormGroup label="專業技能" name="skill" placeholder="例如：USAR、醫療、心理諮商" required />
+          <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all">完成預約登錄</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isModalOpen && modalType === 'shelter'} onClose={closeModal} title="建立避難安置所">
+        <form onSubmit={handleAddItem} className="space-y-4">
+          <FormGroup label="場所名稱" name="name" required />
+          <FormGroup label="容納上限 (人)" name="cap" type="number" required />
+          <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all">建立場所</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isModalOpen && modalType === 'rumor'} onClose={closeModal} title="登錄待查證錯訊">
+        <form onSubmit={handleAddItem} className="space-y-4">
+          <FormGroup label="訊息內容" name="content" required />
+          <FormGroup label="來源渠道" name="source" placeholder="例如：LINE 群組、Facebook" />
+          <button type="submit" className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all">登錄查證流程</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isModalOpen && modalType === 'logistics'} onClose={closeModal} title="提交資材需求 (213RR)">
+        <form onSubmit={handleAddItem} className="space-y-4">
+          <FormGroup label="需求品項" name="item" placeholder="例如：柴油、發電機、乾糧" required />
+          <FormGroup label="發起單位" name="from" required />
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">優先級</label>
+            <select name="priority" className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-sm">
+              <option>緊急</option>
+              <option>高</option>
+              <option>普通</option>
+            </select>
+          </div>
+          <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all">提交需求</button>
+        </form>
+      </Modal>
+    </div>
+  );
+}
+
+// --- 模組組件實作 ---
+
+function MapView() {
+  return (
+    <div className="h-full bg-slate-900 flex items-center justify-center relative overflow-hidden">
+      <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/121.5,24.0,9/800x600?access_token=none')] bg-cover opacity-20 grayscale"></div>
+      <div className="z-10 bg-slate-900/80 p-8 rounded-3xl border border-slate-800 backdrop-blur-md text-center max-w-sm">
+        <Map size={48} className="mx-auto mb-4 text-blue-500" />
+        <h3 className="text-xl font-bold mb-2">GIS 互動指揮層</h3>
+        <p className="text-sm text-slate-500">此為模擬預覽。實際佈署將串接 Google Maps SDK 並啟用動態標記 Clustering 避雜算法。</p>
+      </div>
+    </div>
+  );
+}
+
+function VolunteerModule({ data, onAdd }) {
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2"><Users /> 志工預約名冊</h3>
+        <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-bold"><Plus size={16}/> 手動新增</button>
+      </div>
+      <div className="space-y-3">
+        {data.length === 0 && <EmptyState label="目前無預約資料" />}
+        {data.map(res => (
+          <div key={res.id} className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 font-bold">
+                {res.name[0]}
+              </div>
+              <div>
+                <p className="font-bold">{res.name} <span className="text-[10px] ml-2 text-slate-500 font-normal uppercase tracking-tighter">{res.skill}</span></p>
+                <p className="text-xs text-slate-500 mt-1">{new Date(res.time).toLocaleString()}</p>
+              </div>
+            </div>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${res.status === '逾時' ? 'bg-red-950 text-red-500' : 'bg-slate-800 text-slate-400'}`}>{res.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ShelterModule({ data, onAdd }) {
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2"><Home /> 避難場所監控</h3>
+        <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-bold"><Plus size={16}/> 新增場點</button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {data.length === 0 && <EmptyState label="無安置點資料" />}
+        {data.map(s => (
+          <div key={s.id} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
+            <div className="flex justify-between items-start mb-4">
+              <h4 className="font-bold">{s.name}</h4>
+              <span className="text-xs text-slate-500">{s.current} / {s.capacity} 人</span>
+            </div>
+            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-600 transition-all" style={{ width: `${(s.current/s.capacity)*100}%` }}></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RumorModule({ data, onAdd }) {
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2"><ShieldAlert /> 謠言澄清與治理</h3>
+        <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-orange-600 rounded-lg text-sm font-bold"><Plus size={16}/> 登錄謠言</button>
+      </div>
+      <div className="space-y-4">
+        {data.length === 0 && <EmptyState label="目前無通報謠言" />}
+        {data.map(r => (
+          <div key={r.id} className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
+            <div className="flex justify-between mb-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">{r.source}</span>
+              <span className="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded">{r.status}</span>
+            </div>
+            <p className="text-sm font-bold">{r.content}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LogisticsModule({ data, onAdd }) {
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2"><Package /> 後勤資源調度</h3>
+        <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-bold"><Plus size={16}/> 提交需求</button>
+      </div>
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <table className="w-full text-xs text-left">
+          <thead className="bg-slate-800/50 text-slate-500 uppercase font-bold">
+            <tr>
+              <th className="px-4 py-3">需求項</th>
+              <th className="px-4 py-3">發起單位</th>
+              <th className="px-4 py-3">狀態</th>
+              <th className="px-4 py-3 text-right">優先級</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 && <tr><td colSpan="4" className="text-center py-8 text-slate-600 italic">無資材需求單</td></tr>}
+            {data.map(req => (
+              <tr key={req.id} className="border-t border-slate-800">
+                <td className="px-4 py-3 font-bold">{req.item}</td>
+                <td className="px-4 py-3 text-slate-400">{req.from}</td>
+                <td className="px-4 py-3 text-blue-500">{req.status}</td>
+                <td className="px-4 py-3 text-right">
+                  <span className={`px-2 py-0.5 rounded ${req.priority === '緊急' ? 'bg-red-950 text-red-500' : 'bg-slate-800 text-slate-400'}`}>{req.priority}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function FinanceModule() {
+  return (
+    <div className="p-6">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-12 h-12 bg-pink-600/20 rounded-2xl flex items-center justify-center text-pink-500"><Heart size={28} /></div>
+          <div><h3 className="text-2xl font-black italic italic uppercase">Open Finance</h3><p className="text-xs text-slate-500 font-bold tracking-widest uppercase">災害救助基金即時審計</p></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div><p className="text-slate-500 text-[10px] font-bold uppercase mb-1">目前捐款結餘</p><p className="text-4xl font-black">$ 14,280,000</p></div>
+          <div className="flex items-center"><p className="text-xs text-slate-500 leading-relaxed">財務透明模組已串接第三方審計 API，確保每一筆災民補助與採購合規。</p></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- 介面輔助組件 ---
+
+function NavItem({ active, icon, label, onClick }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`w-full flex items-center gap-4 px-6 py-4 transition-all relative group ${active ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500 hover:bg-slate-800'}`}
+    >
+      <span className={active ? 'scale-110' : 'group-hover:scale-110'}>{icon}</span>
+      <span className="hidden md:inline font-bold text-xs uppercase tracking-widest">{label}</span>
+    </button>
+  );
+}
+
+function FormGroup({ label, name, placeholder, type = "text", required = false }) {
+  return (
+    <div>
+      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
+      <input 
+        name={name} 
+        type={type} 
+        required={required}
+        placeholder={placeholder}
+        className="w-full bg-slate-800 border border-slate-700 p-2 rounded text-sm outline-none focus:border-blue-500 focus:bg-slate-800/50 transition-all placeholder:text-slate-600" 
+      />
+    </div>
+  );
+}
+
+function EmptyState({ label }) {
+  return <div className="p-12 border-2 border-dashed border-slate-800 rounded-2xl text-center text-slate-600 font-medium italic">{label}</div>;
+}
