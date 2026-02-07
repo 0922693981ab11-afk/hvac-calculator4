@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v1.9</title>
+    <title>災害救助行動指揮系統 v2.0 - 身份登入版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,36 +17,24 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
-        /* 自定義滾動條 */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
         .backdrop-blur-md { backdrop-filter: blur(12px); }
+        .login-bg {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+            background-size: 24px 24px;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 overflow-hidden">
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-
-        // 模擬 Lucide React 組件 (在 HTML 環境中使用全域 lucide 物件)
-        const Icon = ({ name, size = 20, className = "", fill = "none" }) => {
-            const [svg, setSvg] = useState("");
-            useEffect(() => {
-                // 使用 lucide.createIcons 的邏輯來獲取圖示
-                if (window.lucide) {
-                    const iconName = name.charAt(0).toLowerCase() + name.slice(1).replace(/[A-Z]/g, m => "-" + m.toLowerCase());
-                    // 這裡簡單處理，實際環境建議使用 SVG 路徑或 CDN
-                }
-            }, [name]);
-            
-            // 由於 UMD 版本的 lucide-react 較難直接調用，我們改用 lucide 的官方方式或 SVG
-            // 為了確保穩定性，我們在這裡直接定義一些核心圖示的簡化 SVG 路徑，或調用全域物件
-            return <i data-lucide={name.toLowerCase().replace(/ /g, '-')} className={className} style={{width: size, height: size, display: 'inline-block'}}></i>;
-        };
 
         // --- 初始化數據 ---
         const INITIAL_INCIDENTS = [
@@ -54,20 +42,12 @@
             { id: 'inc-2', name: '南投土石流預警專案', level: '1級 (鄉鎮)', status: '準備中', date: '2024-05-12' },
         ];
 
-        const INITIAL_RESERVATIONS = [
-            { id: 'R1', incidentId: 'inc-1', name: '王小明', skill: 'USAR 搜索', time: new Date(Date.now() - 7200000).toISOString(), status: '逾時', phone: '0912345678' },
-        ];
-
-        const INITIAL_SHELTERS = [
-            { id: 'S1', incidentId: 'inc-1', name: '花蓮體育館避難所', capacity: 500, current: 420, water: '充足', power: '穩定', needs: ['保暖毯'] },
-        ];
-
-        const INITIAL_RUMORS = [
-            { id: 'RM1', incidentId: 'inc-1', content: '蘇花公路全線斷裂', status: '已澄清', truth: '部分坍方，單線通車', source: '社群平台 X' },
-        ];
-
-        const INITIAL_REQUESTS = [
-            { id: 'LR1', incidentId: 'inc-1', item: '柴油 500L', from: 'A區工兵隊', status: '運送中', priority: '緊急' },
+        const ROLES = [
+            { id: 'ic', name: '指揮中心 (IC)', icon: 'shield-check', desc: '專案啟閉、決策指揮與 CAP 警報發布' },
+            { id: 'ops', name: '作業部 (Ops)', icon: 'activity', desc: '消防、醫療、USAR 任務執行與回報' },
+            { id: 'log', name: '後勤部 (Log)', icon: 'package', desc: '物資調度、油料維修、基礎設施保障' },
+            { id: 'fin', name: '財務部 (Fin)', icon: 'dollar-sign', desc: '捐款透明化、支出核銷與審計儀表板' },
+            { id: 'vol', name: '志工/災民 (Volunteer)', icon: 'users', desc: '預約報到、需求直報與安全狀態更新' },
         ];
 
         // --- 組件實作 ---
@@ -75,12 +55,12 @@
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-                        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
-                            <h3 className="font-bold text-lg text-white">{title}</h3>
-                            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-                                <i data-lucide="x" size="20"></i>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-lg text-slate-800">{title}</h3>
+                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <i data-lucide="x"></i>
                             </button>
                         </div>
                         <div className="p-6">{children}</div>
@@ -89,15 +69,79 @@
             );
         };
 
+        const LoginView = ({ onLogin }) => {
+            useEffect(() => { lucide.createIcons(); }, []);
+            
+            return (
+                <div className="h-screen w-full flex items-center justify-center login-bg p-4 overflow-y-auto">
+                    <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div className="hidden md:block">
+                            <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg mb-6">
+                                <i data-lucide="shield-check" className="text-white w-10 h-10"></i>
+                            </div>
+                            <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">災害救助行動<br/>指揮系統 <span className="text-red-500 font-normal">v2.0</span></h1>
+                            <p className="text-slate-500 leading-relaxed max-w-sm mb-8 font-medium">
+                                建立一鍵啟動、分級指揮、跨機關協作的韌性救災網絡。請選擇您的身份進入系統。
+                            </p>
+                            <div className="flex gap-4">
+                                <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">系統狀態</p>
+                                    <p className="text-xs font-bold text-green-600 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> 全線在線</p>
+                                </div>
+                                <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">加密協議</p>
+                                    <p className="text-xs font-bold text-slate-800">AES-256 TLS</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 p-8 rounded-[2.5rem] shadow-2xl">
+                            <div className="md:hidden flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center shadow-md">
+                                    <i data-lucide="shield-check" className="text-white"></i>
+                                </div>
+                                <h2 className="font-bold text-lg">救助指揮 v2.0</h2>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-6">身份登入</h3>
+                            <div className="space-y-3">
+                                {ROLES.map(role => (
+                                    <button 
+                                        key={role.id}
+                                        onClick={() => onLogin(role)}
+                                        className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-blue-500 hover:shadow-lg transition-all text-left group"
+                                    >
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 text-slate-400 group-hover:text-blue-500 group-hover:border-blue-200 transition-colors">
+                                            <i data-lucide={role.icon}></i>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-slate-800 group-hover:text-blue-600">{role.name}</p>
+                                            <p className="text-[10px] text-slate-400 font-medium">{role.desc}</p>
+                                        </div>
+                                        <i data-lucide="chevron-right" className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all"></i>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    © 2026 Disaster Relief Command System
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
+            const [currentUser, setCurrentUser] = useState(null); // 登入狀態
             const [incidents, setIncidents] = useState(INITIAL_INCIDENTS);
             const [activeIncidentId, setActiveIncidentId] = useState('inc-1');
             const [activeTab, setActiveTab] = useState('map');
             const [isOffline, setIsOffline] = useState(!navigator.onLine);
-            const [reservations, setReservations] = useState(INITIAL_RESERVATIONS);
-            const [shelters, setShelters] = useState(INITIAL_SHELTERS);
-            const [rumors, setRumors] = useState(INITIAL_RUMORS);
-            const [requests, setRequests] = useState(INITIAL_REQUESTS);
+            const [reservations, setReservations] = useState([]);
+            const [shelters, setShelters] = useState([]);
+            const [rumors, setRumors] = useState([]);
+            const [requests, setRequests] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalType, setModalType] = useState(null);
 
@@ -107,19 +151,22 @@
                 const handleStatus = () => setIsOffline(!navigator.onLine);
                 window.addEventListener('online', handleStatus);
                 window.addEventListener('offline', handleStatus);
-                // 初始化圖示
                 lucide.createIcons();
                 return () => {
                     window.removeEventListener('online', handleStatus);
                     window.removeEventListener('offline', handleStatus);
                 };
-            }, []);
+            }, [currentUser]);
 
             useEffect(() => {
-                // 每當分頁或 Modal 切換，重新掃描圖示
                 lucide.createIcons();
-            }, [activeTab, isModalOpen, incidents]);
+            }, [activeTab, isModalOpen, incidents, currentUser]);
 
+            if (!currentUser) {
+                return <LoginView onLogin={(role) => setCurrentUser(role)} />;
+            }
+
+            const handleLogout = () => setCurrentUser(null);
             const closeModal = () => { setIsModalOpen(false); setModalType(null); };
             const openModal = (type) => { setModalType(type); setIsModalOpen(true); };
 
@@ -155,69 +202,90 @@
             const filteredReqs = requests.filter(r => r.incidentId === activeIncidentId);
 
             return (
-                <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
-                    {/* 側邊欄 */}
-                    <nav className="w-20 md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
-                        <div className="p-4 border-b border-slate-800 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center shadow-lg">
-                                <i data-lucide="shield-check" class="text-white"></i>
+                <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden animate-in fade-in duration-500">
+                    {/* 側邊導航欄 */}
+                    <nav className="w-20 md:w-64 bg-slate-50 border-r border-slate-200 flex flex-col">
+                        <div className="p-4 border-b border-slate-200 flex items-center gap-3 bg-white">
+                            <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center shadow-md">
+                                <i data-lucide="shield-check" className="text-white"></i>
                             </div>
                             <div className="hidden md:block">
-                                <h1 className="font-bold text-sm leading-tight">救助指揮 v1.9</h1>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Browser Runtime</p>
+                                <h1 className="font-bold text-sm leading-tight text-slate-900">救助指揮 v2.0</h1>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Secure Core</p>
                             </div>
                         </div>
 
-                        <div className="flex-1 py-4">
-                            <button onClick={() => setActiveTab('map')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'map' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500'}`}>
-                                <i data-lucide="map"></i> <span className="hidden md:inline font-bold text-xs uppercase">圖資指揮層</span>
+                        <div className="flex-1 py-4 overflow-y-auto">
+                            <button onClick={() => setActiveTab('map')} className="w-full flex items-center gap-4 px-6 py-4 text-blue-600 hover:bg-blue-50 transition-colors group">
+                                <i data-lucide="layout-dashboard"></i>
+                                <span className="hidden md:inline font-bold text-xs uppercase">返回指揮首頁</span>
                             </button>
-                            <button onClick={() => setActiveTab('volunteers')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'volunteers' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500'}`}>
-                                <i data-lucide="users"></i> <span className="hidden md:inline font-bold text-xs uppercase">志工管理</span>
+                            
+                            <div className="my-2 border-t border-slate-200 mx-4 opacity-50"></div>
+
+                            <button onClick={() => setActiveTab('map')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'map' ? 'bg-white text-blue-600 border-r-4 border-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                <i data-lucide="map"></i> <span className="hidden md:inline text-xs uppercase">圖資指揮層</span>
                             </button>
-                            <button onClick={() => setActiveTab('shelters')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'shelters' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500'}`}>
-                                <i data-lucide="home"></i> <span className="hidden md:inline font-bold text-xs uppercase">避難所管理</span>
+                            <button onClick={() => setActiveTab('volunteers')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'volunteers' ? 'bg-white text-blue-600 border-r-4 border-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                <i data-lucide="users"></i> <span className="hidden md:inline text-xs uppercase">志工管理</span>
                             </button>
-                            <button onClick={() => setActiveTab('logistics')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'logistics' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500'}`}>
-                                <i data-lucide="package"></i> <span className="hidden md:inline font-bold text-xs uppercase">後勤調度</span>
+                            <button onClick={() => setActiveTab('shelters')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'shelters' ? 'bg-white text-blue-600 border-r-4 border-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                <i data-lucide="home"></i> <span className="hidden md:inline text-xs uppercase">避難所管理</span>
                             </button>
-                            <button onClick={() => setActiveTab('rumors')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'rumors' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500'}`}>
-                                <i data-lucide="shield-alert"></i> <span className="hidden md:inline font-bold text-xs uppercase">謠言治理</span>
+                            <button onClick={() => setActiveTab('logistics')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'logistics' ? 'bg-white text-blue-600 border-r-4 border-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                <i data-lucide="package"></i> <span className="hidden md:inline text-xs uppercase">後勤調度</span>
                             </button>
-                            <button onClick={() => setActiveTab('fin')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'fin' ? 'bg-blue-600/10 text-blue-400 border-r-4 border-blue-600' : 'text-slate-500'}`}>
-                                <i data-lucide="dollar-sign"></i> <span className="hidden md:inline font-bold text-xs uppercase">財務透明</span>
+                            <button onClick={() => setActiveTab('rumors')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'rumors' ? 'bg-white text-blue-600 border-r-4 border-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                <i data-lucide="shield-alert"></i> <span className="hidden md:inline text-xs uppercase">謠言治理</span>
+                            </button>
+                            <button onClick={() => setActiveTab('fin')} className={`w-full flex items-center gap-4 px-6 py-4 ${activeTab === 'fin' ? 'bg-white text-blue-600 border-r-4 border-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                <i data-lucide="dollar-sign"></i> <span className="hidden md:inline text-xs uppercase">財務透明</span>
                             </button>
                         </div>
 
-                        <div className="p-4 border-t border-slate-800">
-                            <select value={activeIncidentId} onChange={(e) => setActiveIncidentId(e.target.value)} className="w-full bg-slate-800 border border-slate-700 text-xs p-2 rounded mb-2 outline-none">
+                        <div className="p-4 border-t border-slate-200 bg-white">
+                            <div className="flex items-center gap-2 mb-4 p-2 bg-slate-50 rounded-lg">
+                                <div className="w-8 h-8 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-400">
+                                    <i data-lucide={currentUser.icon} size="16"></i>
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="text-[10px] font-bold text-slate-800 truncate">{currentUser.name}</p>
+                                    <button onClick={handleLogout} className="text-[8px] font-bold text-red-500 uppercase hover:underline">登出系統</button>
+                                </div>
+                            </div>
+                            <select value={activeIncidentId} onChange={(e) => setActiveIncidentId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-xs p-2 rounded mb-2 outline-none">
                                 {incidents.map(inc => <option key={inc.id} value={inc.id}>{inc.name}</option>)}
                             </select>
-                            <button onClick={() => openModal('incident')} className="w-full py-2 bg-blue-600/10 text-blue-400 text-xs rounded border border-blue-600/30 font-bold">新增專案</button>
+                            <button onClick={() => openModal('incident')} className="w-full py-2 bg-blue-50 text-blue-600 text-xs rounded border border-blue-100 font-bold hover:bg-blue-600 hover:text-white transition-all">新增專案</button>
                         </div>
                     </nav>
 
                     {/* 主內容 */}
                     <main className="flex-1 flex flex-col overflow-hidden">
-                        <header className="h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between">
+                        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-sm z-10">
                             <div className="flex items-center gap-4">
-                                <h2 className="text-lg font-bold">{activeIncident?.name}</h2>
-                                <span className="px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded text-[10px] border border-blue-700 font-bold">{activeIncident?.level}</span>
+                                <h2 className="text-lg font-bold text-slate-800">{activeIncident?.name}</h2>
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] border border-blue-100 font-bold uppercase">{activeIncident?.level}</span>
                             </div>
-                            <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border ${isOffline ? 'bg-orange-900/20 text-orange-500 border-orange-800' : 'bg-green-900/20 text-green-500 border-green-800'}`}>
+                            <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border ${isOffline ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
                                 <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-orange-500' : 'bg-green-500 animate-pulse'}`}></div>
-                                {isOffline ? '離線模式' : '雲端同步'}
+                                {isOffline ? '離線狀態' : '權限已驗證'}
                             </div>
                         </header>
 
-                        <div className="flex-1 overflow-y-auto p-6 bg-slate-950">
+                        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
                             {activeTab === 'map' && (
-                                <div className="h-full bg-slate-900 flex items-center justify-center relative rounded-3xl overflow-hidden border border-slate-800">
-                                    <div className="absolute inset-0 bg-slate-800 opacity-20 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/121.5,24.0,9/800x600?access_token=none')] bg-cover"></div>
-                                    <div className="z-10 text-center p-10 bg-slate-900/80 backdrop-blur-xl rounded-[3rem] border border-slate-800 shadow-2xl">
-                                        <i data-lucide="map" size="48" class="mx-auto mb-4 text-blue-500"></i>
-                                        <h3 className="text-2xl font-black mb-2">GIS 指揮圖資層</h3>
-                                        <p className="text-sm text-slate-500 max-w-xs">系統已就緒。可串接 Google Maps SDK 提供即時定位與地理柵欄功能。</p>
+                                <div className="h-full bg-white flex items-center justify-center relative rounded-3xl overflow-hidden border border-slate-200 shadow-inner">
+                                    <div className="absolute inset-0 opacity-40 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v11/static/121.5,24.0,9/1200x800?access_token=none')] bg-cover"></div>
+                                    <div className="z-10 text-center p-12 bg-white/80 backdrop-blur-md rounded-[3rem] border border-white shadow-xl max-w-md">
+                                        <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-blue-100 shadow-sm text-blue-600">
+                                            <i data-lucide="map" size="40"></i>
+                                        </div>
+                                        <h3 className="text-2xl font-black mb-3 text-slate-800 tracking-tight">GIS 行動指揮圖資</h3>
+                                        <p className="text-sm text-slate-500 leading-relaxed mb-6">歡迎使用，目前的身份為：<span className="font-bold text-blue-600">{currentUser.name}</span>。您已獲得該專案的即時圖資查閱權限。</p>
+                                        <div className="flex justify-center gap-3">
+                                            <span className="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-400">登入時間: {new Date().toLocaleTimeString()}</span>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -225,21 +293,21 @@
                             {activeTab === 'volunteers' && (
                                 <div className="max-w-4xl mx-auto">
                                     <div className="flex justify-between items-center mb-8">
-                                        <h3 className="text-2xl font-black flex items-center gap-3"><i data-lucide="users" class="text-blue-500"></i> 志工預約名冊</h3>
-                                        <button onClick={() => openModal('volunteer')} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-black shadow-lg">手動登錄</button>
+                                        <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3"><i data-lucide="users" className="text-blue-500"></i> 志工管理</h3>
+                                        <button onClick={() => openModal('volunteer')} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-200">手動登錄</button>
                                     </div>
                                     <div className="space-y-3">
-                                        {filteredRes.length === 0 && <p className="text-center py-20 text-slate-700 italic border-2 border-dashed border-slate-900 rounded-3xl">尚無預約資料</p>}
+                                        {filteredRes.length === 0 && <div className="py-20 text-center border-2 border-dashed border-slate-200 rounded-3xl text-slate-300 italic font-bold">暫無資料</div>}
                                         {filteredRes.map(res => (
-                                            <div key={res.id} className="p-5 bg-slate-900 border border-slate-800 rounded-2xl flex justify-between items-center">
+                                            <div key={res.id} className="p-5 bg-white border border-slate-200 rounded-2xl flex justify-between items-center shadow-sm">
                                                 <div className="flex items-center gap-5">
-                                                    <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center text-blue-400 font-black text-lg border border-slate-700">{res.name[0]}</div>
+                                                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-blue-600 font-black text-lg border border-slate-200">{res.name[0]}</div>
                                                     <div>
-                                                        <p className="font-bold">{res.name} <span className="text-[10px] ml-2 text-slate-500 uppercase tracking-widest">{res.skill}</span></p>
-                                                        <p className="text-xs text-slate-500 mt-1">{new Date(res.time).toLocaleString()}</p>
+                                                        <p className="font-bold text-slate-800">{res.name} <span className="text-[10px] ml-2 text-slate-400 uppercase tracking-widest font-bold border border-slate-200 px-1.5 py-0.5 rounded">{res.skill}</span></p>
+                                                        <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5"><i data-lucide="clock" size="12"></i> {new Date(res.time).toLocaleString()}</p>
                                                     </div>
                                                 </div>
-                                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${res.status === '逾時' ? 'bg-red-950 text-red-500' : 'bg-slate-800 text-slate-400'}`}>{res.status}</span>
+                                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${res.status === '逾時' ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{res.status}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -249,18 +317,18 @@
                             {activeTab === 'shelters' && (
                                 <div className="max-w-5xl mx-auto">
                                     <div className="flex justify-between items-center mb-8">
-                                        <h3 className="text-2xl font-black flex items-center gap-3"><i data-lucide="home" class="text-green-500"></i> 避難場所監控</h3>
-                                        <button onClick={() => openModal('shelter')} className="px-5 py-2.5 bg-green-700 text-white rounded-xl text-sm font-black">新增安置場所</button>
+                                        <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3"><i data-lucide="home" className="text-green-600"></i> 避難場所監控</h3>
+                                        <button onClick={() => openModal('shelter')} className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold">新增場點</button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {filteredShelters.length === 0 && <div className="col-span-full py-20 border-2 border-dashed border-slate-900 text-center rounded-3xl text-slate-700 font-bold">暫無安置資料</div>}
                                         {filteredShelters.map(s => (
-                                            <div key={s.id} className="p-6 bg-slate-900 border border-slate-800 rounded-[2rem]">
-                                                <h4 className="font-bold text-lg mb-4">{s.name}</h4>
-                                                <div className="flex justify-between text-xs text-slate-500 mb-2 font-bold"><span>負荷進度</span><span>{s.current} / {s.capacity}</span></div>
-                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                            <div key={s.id} className="p-6 bg-white border border-slate-200 rounded-[2rem] shadow-sm">
+                                                <h4 className="font-bold text-lg mb-4 text-slate-800">{s.name}</h4>
+                                                <div className="flex justify-between text-xs text-slate-400 mb-2 font-bold tracking-widest uppercase"><span>容量</span><span>{s.current} / {s.capacity}</span></div>
+                                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
                                                     <div className="h-full bg-blue-500" style={{ width: `${(s.current/s.capacity)*100}%` }}></div>
                                                 </div>
+                                                <div className="text-right text-[10px] font-bold text-blue-600">{Math.round((s.current/s.capacity)*100)}%</div>
                                             </div>
                                         ))}
                                     </div>
@@ -270,22 +338,22 @@
                             {activeTab === 'logistics' && (
                                 <div className="max-w-6xl mx-auto">
                                     <div className="flex justify-between items-center mb-8">
-                                        <h3 className="text-2xl font-black flex items-center gap-3"><i data-lucide="package" class="text-purple-500"></i> 後勤資源調度</h3>
-                                        <button onClick={() => openModal('logistics')} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-black">提交需求</button>
+                                        <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3"><i data-lucide="package" className="text-purple-600"></i> 後勤調度</h3>
+                                        <button onClick={() => openModal('logistics')} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold">提交需求</button>
                                     </div>
-                                    <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
+                                    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                                         <table className="w-full text-xs text-left">
-                                            <thead className="bg-slate-800/50 text-slate-500 uppercase font-black tracking-widest">
-                                                <tr><th className="px-6 py-4">需求品項</th><th className="px-6 py-4">發起單位</th><th className="px-6 py-4">狀態</th><th className="px-6 py-4">優先級</th></tr>
+                                            <thead className="bg-slate-50 text-slate-400 uppercase font-black tracking-widest border-b border-slate-100">
+                                                <tr><th className="px-6 py-4">需求品項</th><th className="px-6 py-4">發起單位</th><th className="px-6 py-4">狀態</th><th className="px-6 py-4 text-right">優先級</th></tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-800">
+                                            <tbody className="divide-y divide-slate-100">
                                                 {filteredReqs.map(req => (
-                                                    <tr key={req.id}>
-                                                        <td className="px-6 py-5 font-bold">{req.item}</td>
-                                                        <td className="px-6 py-5 text-slate-400">{req.from}</td>
-                                                        <td className="px-6 py-5 text-blue-400 font-bold underline cursor-pointer">{req.status}</td>
-                                                        <td className="px-6 py-5">
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${req.priority === '緊急' ? 'bg-red-950 text-red-500' : 'bg-slate-800 text-slate-400'}`}>{req.priority}</span>
+                                                    <tr key={req.id} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-6 py-5 font-bold text-slate-800">{req.item}</td>
+                                                        <td className="px-6 py-5 text-slate-500">{req.from}</td>
+                                                        <td className="px-6 py-5 text-blue-600 font-bold underline cursor-pointer">{req.status}</td>
+                                                        <td className="px-6 py-5 text-right">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${req.priority === '緊急' ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>{req.priority}</span>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -298,17 +366,17 @@
                             {activeTab === 'rumors' && (
                                 <div className="max-w-4xl mx-auto">
                                     <div className="flex justify-between items-center mb-8">
-                                        <h3 className="text-2xl font-black text-orange-400 flex items-center gap-3"><i data-lucide="shield-alert"></i> 謠言澄清與防治</h3>
-                                        <button onClick={() => openModal('rumor')} className="px-5 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-black">登錄疑似錯訊</button>
+                                        <h3 className="text-2xl font-black text-orange-600 flex items-center gap-3"><i data-lucide="shield-alert"></i> 謠言澄清與防治</h3>
+                                        <button onClick={() => openModal('rumor')} className="px-5 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-orange-100">登錄疑似錯訊</button>
                                     </div>
                                     <div className="space-y-4">
                                         {filteredRumors.map(r => (
-                                            <div key={r.id} className="p-6 bg-slate-900 border border-slate-800 rounded-2xl">
+                                            <div key={r.id} className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm border-l-4 border-l-orange-500">
                                                 <div className="flex justify-between items-center mb-3">
-                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{r.source}</span>
-                                                    <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase ${r.status === '已澄清' ? 'bg-green-950 text-green-500' : 'bg-orange-950 text-orange-500'}`}>{r.status}</span>
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{r.source}</span>
+                                                    <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase ${r.status === '已澄清' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-orange-50 text-orange-600 border border-orange-100'}`}>{r.status}</span>
                                                 </div>
-                                                <p className="text-slate-100 font-bold leading-relaxed">{r.content}</p>
+                                                <p className="text-slate-800 font-bold leading-relaxed">{r.content}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -317,27 +385,23 @@
 
                             {activeTab === 'fin' && (
                                 <div className="p-10 max-w-5xl mx-auto">
-                                    <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-12 rounded-[3rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                                    <div className="bg-white p-12 rounded-[3rem] border border-slate-200 shadow-2xl relative overflow-hidden">
                                         <div className="flex items-center gap-4 mb-10">
-                                            <div className="w-16 h-16 bg-pink-600/20 rounded-[1.5rem] flex items-center justify-center text-pink-500 border border-pink-500/30">
+                                            <div className="w-16 h-16 bg-pink-50 rounded-[1.5rem] flex items-center justify-center text-pink-500 border border-pink-100 shadow-sm">
                                                 <i data-lucide="heart" size="36"></i>
                                             </div>
                                             <div>
-                                                <h3 className="text-3xl font-black italic tracking-tighter uppercase">Open Finance</h3>
-                                                <p className="text-[10px] text-slate-500 font-black tracking-[0.3em] uppercase">災害救助基金即時公開系統</p>
+                                                <h3 className="text-3xl font-black italic tracking-tighter uppercase text-slate-800">Open Finance</h3>
+                                                <p className="text-[10px] text-slate-400 font-black tracking-[0.3em] uppercase">救助基金即時公開審計</p>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                             <div>
-                                                <p className="text-slate-500 text-xs font-black uppercase mb-3 tracking-widest opacity-60">目前捐款總結餘</p>
-                                                <p className="text-6xl font-black text-white tracking-tighter mb-4">$ 14,280,000</p>
-                                                <div className="flex gap-2 text-[10px] font-black">
-                                                    <span className="px-2 py-1 bg-green-950 text-green-400 rounded border border-green-900/50 uppercase">Audit Passed</span>
-                                                    <span className="px-2 py-1 bg-slate-800 text-slate-400 rounded border border-slate-700">ISO 27001</span>
-                                                </div>
+                                                <p className="text-slate-400 text-xs font-black uppercase mb-3 tracking-widest">目前捐款結餘</p>
+                                                <p className="text-6xl font-black text-slate-900 tracking-tighter mb-4">$ 14,280,000</p>
                                             </div>
-                                            <p className="text-sm text-slate-400 leading-relaxed italic border-l-2 border-slate-800 pl-6 self-end py-2">
-                                                系統已串接區塊鏈存證與第三方審計 API，確保每一筆災民補助與資源採購均受到社會監督與合規核銷。
+                                            <p className="text-sm text-slate-500 leading-relaxed italic border-l-4 border-slate-100 pl-6 self-end py-2">
+                                                財務模組已啟動公開模式，確保資源精準投放至一線災區。
                                             </p>
                                         </div>
                                     </div>
@@ -347,43 +411,42 @@
                     </main>
 
                     {/* Modals */}
-                    <Modal isOpen={isModalOpen && modalType === 'incident'} onClose={closeModal} title="建立救災專案">
+                    <Modal isOpen={isModalOpen && modalType === 'incident'} onClose={closeModal} title="啟動專案">
                         <form onSubmit={handleAddIncident} className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">專案名稱</label><input name="name" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none focus:border-blue-500" /></div>
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">災害分級</label><select name="level" className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm outline-none"><option>1級 (鄉鎮)</option><option>2級 (縣市)</option><option>3級 (跨縣市)</option></select></div>
-                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg mt-4">啟動行動</button>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">專案名稱</label><input name="name" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">分級</label><select name="level" className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm"><option>1級</option><option>2級</option><option>3級</option></select></div>
+                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold">啟動</button>
                         </form>
                     </Modal>
 
-                    <Modal isOpen={isModalOpen && modalType === 'volunteer'} onClose={closeModal} title="新增志工">
+                    <Modal isOpen={isModalOpen && modalType === 'volunteer'} onClose={closeModal} title="登錄志工">
                         <form onSubmit={handleAddItem} className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">姓名</label><input name="name" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">專業技能</label><input name="skill" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">完成登錄</button>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">姓名</label><input name="name" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">技能</label><input name="skill" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold">登錄</button>
                         </form>
                     </Modal>
 
-                    <Modal isOpen={isModalOpen && modalType === 'shelter'} onClose={closeModal} title="建立安置所">
+                    <Modal isOpen={isModalOpen && modalType === 'shelter'} onClose={closeModal} title="安置點">
                         <form onSubmit={handleAddItem} className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">場所名稱</label><input name="name" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">容納上限</label><input name="cap" type="number" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">建立場點</button>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">名稱</label><input name="name" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">上限</label><input name="cap" type="number" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" style={{color:'#000'}} /></div>
+                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold">建立</button>
                         </form>
                     </Modal>
 
-                    <Modal isOpen={isModalOpen && modalType === 'logistics'} onClose={closeModal} title="資材需求">
+                    <Modal isOpen={isModalOpen && modalType === 'logistics'} onClose={closeModal} title="需求單">
                         <form onSubmit={handleAddItem} className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">品項</label><input name="item" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">發起單位</label><input name="from" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg">提交需求</button>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">品項</label><input name="item" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">單位</label><input name="from" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold">提交</button>
                         </form>
                     </Modal>
 
-                    <Modal isOpen={isModalOpen && modalType === 'rumor'} onClose={closeModal} title="查證錯訊">
+                    <Modal isOpen={isModalOpen && modalType === 'rumor'} onClose={closeModal} title="查證">
                         <form onSubmit={handleAddItem} className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">訊息內容</label><input name="content" required className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-widest">來源</label><input name="source" className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm text-white outline-none" /></div>
-                            <button type="submit" className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg">登錄查證</button>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-1">內容</label><input name="content" required className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm" /></div>
+                            <button type="submit" className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold">登錄</button>
                         </form>
                     </Modal>
                 </div>
