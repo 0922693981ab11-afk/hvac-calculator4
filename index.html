@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v8.0 - 旗艦修復版</title>
+    <title>災害救助行動指揮系統 v8.1 - 功能修復版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -84,7 +84,7 @@
                 triage: { red: '第一優先 (紅)', yellow: '第二優先 (黃)', green: '第三優先 (綠)', black: '死亡 (黑)', desc: '依據呼吸、循環、意識 (RPM) 快速分類' },
                 mesh: { active: 'Mesh 網狀網路啟用', inactive: '網際網路連線中', desc: '基礎設施中斷時，透過藍牙/WiFi Direct 進行近接中繼傳輸。' },
                 safety: { locationConsentTitle: '開啟位置回報', locationConsentDesc: '為了您的安全，系統需存取 GPS。資料僅供本次任務使用。', agree: '同意並開啟', heartbeat: '安全心跳', connected: '系統連線中', location: '定位服務', locationOff: '未分享', locationOn: '即時回報中', confirmSOS: '確認發送求救訊號？', sosDesc: '將傳送精確座標與錄音至最近的救援小組與指揮中心。', cancel: '取消', send: '立即發送 SOS' },
-                status: { overdue: '逾時', checkedIn: '已報到', booking: '預約中', pending: '待處理', shipping: '運送中', arrived: '已送達', urgent: '緊急' },
+                status: { overdue: '逾時', checkedIn: '已報到', booking: '預約中', pending: '待處理', shipping: '運送中', arrived: '已送達', urgent: '緊急', Normal: '普通', High: '高', Urgent: '緊急' },
                 designerLabel: '設計者 吳啓仲'
             },
             'en-US': {
@@ -109,7 +109,7 @@
                 triage: { red: 'Immediate (Red)', yellow: 'Delayed (Yellow)', green: 'Minor (Green)', black: 'Deceased (Black)', desc: 'Rapid sorting based on RPM (Respiration, Perfusion, Mental Status)' },
                 mesh: { active: 'Mesh Network Active', inactive: 'Internet Connected', desc: 'Use Bluetooth/WiFi Direct for proximity relay when infra fails.' },
                 safety: { locationConsentTitle: 'Enable Tracking', locationConsentDesc: 'GPS access required for safety. Data used for mission only.', agree: 'Agree & Enable', heartbeat: 'Heartbeat', connected: 'Connected', location: 'Location Svc', locationOff: 'Off', locationOn: 'Tracking', confirmSOS: 'Confirm SOS Signal?', sosDesc: 'Transmitting coords & audio to Rescue Team.', cancel: 'Cancel', send: 'Send SOS Now' },
-                status: { overdue: 'Overdue', checkedIn: 'Checked-In', booking: 'Booking', pending: 'Pending', shipping: 'Shipping', arrived: 'Arrived', urgent: 'Urgent' },
+                status: { overdue: 'Overdue', checkedIn: 'Checked-In', booking: 'Booking', pending: 'Pending', shipping: 'Shipping', arrived: 'Arrived', urgent: 'Urgent', Normal: 'Normal', High: 'High', Urgent: 'Urgent' },
                 designerLabel: 'Designer: Wu Qi-Zhong'
             }
         };
@@ -145,7 +145,7 @@
 
         // --- Components ---
         const ToastContainer = ({ toasts, removeToast }) => (
-            <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[70] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
+            <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[80] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
                 {toasts.map(toast => (
                     <div key={toast.id} className="toast-enter pointer-events-auto bg-slate-800 text-white shadow-xl rounded-lg p-3 flex items-center gap-3">
                         <div className={`p-1 rounded-full ${toast.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}><i data-lucide={toast.type === 'success' ? 'check' : 'info'} width="14"></i></div>
@@ -158,7 +158,7 @@
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="font-bold text-lg text-slate-800">{title}</h3>
@@ -188,9 +188,26 @@
 
         const StatusBadge = ({ status, lang }) => {
             const t = TRANSLATIONS[lang].status;
-            const statusMap = { '逾時': t.overdue, '已報到': t.checkedIn, '預約中': t.booking, '待處理': t.pending, '運送中': t.shipping, '已送達': t.arrived, '緊急': t.urgent };
+            // Enhanced mapping to include priorities
+            const statusMap = { 
+                '逾時': t.overdue, 'Overdue': t.overdue,
+                '已報到': t.checkedIn, 'Checked-In': t.checkedIn,
+                '預約中': t.booking, 'Booking': t.booking,
+                '待處理': t.pending, 'Pending': t.pending,
+                '運送中': t.shipping, 'Shipping': t.shipping,
+                '已送達': t.arrived, 'Arrived': t.arrived,
+                '緊急': t.urgent, 'Urgent': t.urgent,
+                'Normal': t.Normal || 'Normal', 'High': t.High || 'High' // Fallbacks
+            };
             const displayStatus = statusMap[status] || status;
-            const colors = { [t.overdue]: 'bg-red-50 text-red-600 border-red-100', [t.checkedIn]: 'bg-green-50 text-green-600 border-green-100', [t.booking]: 'bg-blue-50 text-blue-600 border-blue-100', [t.urgent]: 'bg-red-600 text-white border-red-600' };
+            
+            const colors = { 
+                [t.overdue]: 'bg-red-50 text-red-600 border-red-100', 
+                [t.checkedIn]: 'bg-green-50 text-green-600 border-green-100', 
+                [t.booking]: 'bg-blue-50 text-blue-600 border-blue-100', 
+                [t.urgent]: 'bg-red-600 text-white border-red-600',
+                [t.High]: 'bg-orange-100 text-orange-700 border-orange-200' 
+            };
             return <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${colors[displayStatus] || 'bg-slate-50 text-slate-500 border-slate-100'}`}>{displayStatus}</span>;
         };
 
@@ -229,7 +246,7 @@
                     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
-                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v8.0</h1>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v8.1</h1>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
 
@@ -292,7 +309,7 @@
             return (
                 <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
                     <div className="flex justify-between items-end mb-8">
-                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v8.0 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
+                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v8.1 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
                         <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -531,7 +548,7 @@
                         )}
                         <div className="flex items-center gap-2 font-bold text-slate-800">
                             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                            ResQ v8.0
+                            ResQ v8.1
                         </div>
                     </div>
 
@@ -540,7 +557,7 @@
                         <div className="p-5 border-b border-slate-100 flex flex-col items-start gap-1">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v8.0</h1></div>
+                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v8.1</h1></div>
                             </div>
                             <div className="hidden md:block mt-3 w-full">
                                 {currentUser.unit && <div className="bg-slate-50 p-2 rounded text-xs font-bold text-slate-600 mb-2 border border-slate-200"><span className="block text-[8px] text-slate-400 uppercase tracking-widest">Unit</span>{currentUser.unit}</div>}
@@ -596,7 +613,7 @@
                                 ))}
                             </div>
                         ) : (
-                            <form onSubmit={modalType === 'volunteer' ? handleVolunteerAdd : handleLogisticsAdd} className="space-y-4">
+                            <form key={modalType} onSubmit={modalType === 'volunteer' ? handleVolunteerAdd : handleLogisticsAdd} className="space-y-4">
                                 {modalType === 'volunteer' ? (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
@@ -610,7 +627,7 @@
                                         <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.item}</label><input name="item" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderItem} /></div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.qty}</label><input name="qty" type="number" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" /></div>
-                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.priority}</label><select name="priority" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.priority}</label><select name="priority" className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"><option value="Normal">Normal</option><option value="High">High</option><option value="Urgent">Urgent</option></select></div>
                                         </div>
                                         <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.from}</label><input name="from" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderFrom} /></div>
                                     </>
