@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v7.5 - 返回功能修復版</title>
+    <title>災害救助行動指揮系統 v8.0 - 旗艦修復版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -60,7 +60,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback } = React;
 
-        // --- i18n Translations (ZH-TW First) ---
+        // --- i18n Translations ---
         const TRANSLATIONS = {
             'zh-TW': {
                 appTitle: '災害救助行動指揮系統',
@@ -79,7 +79,8 @@
                 nav: { dashboard: '指揮總覽', map: '戰情地圖', medical: '緊急醫療', volunteers: '人力管理', logistics: '後勤調度', social: '社群情資', resource: '資材循環', life: '生活後勤', logout: '登出', back: '返回上一頁' },
                 stats: { manpower: '前線人力', requests: '待處理需求', triage: '檢傷總數', sensors: 'IoT 異常', recycle: '資材循環率', shelter: '避難負荷' },
                 headers: { alert: '官方與社群警訊', gisControl: 'GIS 圖層', quickActions: '快速行動', triage: '大量傷患檢傷 (START)', mesh: 'D2D 網狀網路', social: '社群輿情監測', borrowed: '借用中資材', myGear: '個人自攜清單', lifeSupport: '生活後勤保障' },
-                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收' },
+                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收', confirmAdd: '確認新增', cancel: '取消' },
+                form: { name: '姓名', phone: '聯絡電話', skill: '專業技能', item: '需求品項', qty: '數量', priority: '優先級', from: '需求單位', placeholderName: '輸入全名', placeholderPhone: '09xx-xxx-xxx', placeholderSkill: '如：緊急救護 (EMT-1)', placeholderItem: '如：睡袋', placeholderFrom: '如：A區安置點' },
                 triage: { red: '第一優先 (紅)', yellow: '第二優先 (黃)', green: '第三優先 (綠)', black: '死亡 (黑)', desc: '依據呼吸、循環、意識 (RPM) 快速分類' },
                 mesh: { active: 'Mesh 網狀網路啟用', inactive: '網際網路連線中', desc: '基礎設施中斷時，透過藍牙/WiFi Direct 進行近接中繼傳輸。' },
                 safety: { locationConsentTitle: '開啟位置回報', locationConsentDesc: '為了您的安全，系統需存取 GPS。資料僅供本次任務使用。', agree: '同意並開啟', heartbeat: '安全心跳', connected: '系統連線中', location: '定位服務', locationOff: '未分享', locationOn: '即時回報中', confirmSOS: '確認發送求救訊號？', sosDesc: '將傳送精確座標與錄音至最近的救援小組與指揮中心。', cancel: '取消', send: '立即發送 SOS' },
@@ -103,7 +104,8 @@
                 nav: { dashboard: 'Dashboard', map: 'Situation Map', medical: 'Medical EMS', volunteers: 'Volunteers', logistics: 'Logistics', social: 'Social Intel', resource: 'Circularity', life: 'Life Support', logout: 'Logout', back: 'Go Back' },
                 stats: { manpower: 'Manpower', requests: 'Pending Req', triage: 'Triage Count', sensors: 'IoT Alerts', recycle: 'Recycle Rate', shelter: 'Shelter Load' },
                 headers: { alert: 'Official & Social Alerts', gisControl: 'GIS Layers', quickActions: 'Quick Actions', triage: 'Mass Casualty Triage', mesh: 'D2D Mesh Network', social: 'Social Media Monitoring', borrowed: 'Borrowed Gear', myGear: 'My Gear', lifeSupport: 'Life Support' },
-                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive' },
+                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive', confirmAdd: 'Confirm Add', cancel: 'Cancel' },
+                form: { name: 'Name', phone: 'Phone', skill: 'Skill', item: 'Item', qty: 'Qty', priority: 'Priority', from: 'From Unit', placeholderName: 'Full Name', placeholderPhone: 'Phone Number', placeholderSkill: 'e.g. EMT-1', placeholderItem: 'e.g. Sleeping Bag', placeholderFrom: 'e.g. Zone A' },
                 triage: { red: 'Immediate (Red)', yellow: 'Delayed (Yellow)', green: 'Minor (Green)', black: 'Deceased (Black)', desc: 'Rapid sorting based on RPM (Respiration, Perfusion, Mental Status)' },
                 mesh: { active: 'Mesh Network Active', inactive: 'Internet Connected', desc: 'Use Bluetooth/WiFi Direct for proximity relay when infra fails.' },
                 safety: { locationConsentTitle: 'Enable Tracking', locationConsentDesc: 'GPS access required for safety. Data used for mission only.', agree: 'Agree & Enable', heartbeat: 'Heartbeat', connected: 'Connected', location: 'Location Svc', locationOff: 'Off', locationOn: 'Tracking', confirmSOS: 'Confirm SOS Signal?', sosDesc: 'Transmitting coords & audio to Rescue Team.', cancel: 'Cancel', send: 'Send SOS Now' },
@@ -227,7 +229,7 @@
                     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
-                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v7.5</h1>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v8.0</h1>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
 
@@ -290,7 +292,7 @@
             return (
                 <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
                     <div className="flex justify-between items-end mb-8">
-                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v7.5 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
+                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v8.0 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
                         <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -392,19 +394,6 @@
             );
         };
 
-        const SocialView = ({ lang }) => {
-            const t = TRANSLATIONS[lang];
-            return (
-                <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
-                    <PageHeader title={t.nav.social} icon="message-circle" color="text-blue-500" />
-                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                        <div className="flex items-center gap-2 mb-6 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm"><i data-lucide="info"></i><span>Aggregating public reports from Facebook, Line, and PTT for verification.</span></div>
-                        <div className="space-y-4">{SOCIAL_FEED.map(feed => (<div key={feed.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0"><div className="flex justify-between items-start"><div className="flex gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold">{feed.user[0]}</div><div><p className="font-bold text-slate-800">{feed.user} <span className="text-xs font-normal text-slate-400">via {feed.source}</span></p><p className="text-sm text-slate-600 mt-1">{feed.content}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${feed.status === '已證實' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{feed.status}</span></div><div className="flex gap-2 mt-3 pl-13 ml-13"><button className="text-xs text-blue-600 font-bold hover:underline">{t.actions.verify}</button><button className="text-xs text-slate-400 hover:text-slate-600">{t.actions.ignore}</button></div></div>))}</div>
-                    </div>
-                </div>
-            );
-        };
-
         const SafetyBar = ({ onSOS, lang, isSharing, toggleSharing, isMeshActive, toggleMesh }) => {
             const t = TRANSLATIONS[lang].safety;
             const tm = TRANSLATIONS[lang].mesh;
@@ -467,9 +456,37 @@
                 }
             };
 
-            // Handlers
-            const handleVolunteerAdd = (e) => { e.preventDefault(); setReservations(p => [...p, { id: Date.now(), name: 'New Volunteer', phone: '09xx', skill: 'General', time: new Date().toISOString(), status: '預約中' }]); addToast('Success', 'Volunteer Added'); setIsModalOpen(false); };
-            const handleLogisticsAdd = (e) => { e.preventDefault(); setRequests(p => [...p, { id: Date.now(), item: 'New Item', qty: 1, from: 'Field', status: '待處理', priority: 'Normal' }]); addToast('Success', 'Request Submitted'); setIsModalOpen(false); };
+            // Handlers (Fixed: restored full functionality)
+            const handleVolunteerAdd = (e) => { 
+                e.preventDefault(); 
+                const fd = new FormData(e.target);
+                setReservations(p => [...p, { 
+                    id: Date.now(), 
+                    name: fd.get('name'), 
+                    phone: fd.get('phone'), 
+                    skill: fd.get('skill'), 
+                    time: new Date().toISOString(), 
+                    status: '預約中' 
+                }]); 
+                addToast('Success', 'Volunteer Added'); 
+                setIsModalOpen(false); 
+            };
+
+            const handleLogisticsAdd = (e) => { 
+                e.preventDefault(); 
+                const fd = new FormData(e.target);
+                setRequests(p => [...p, { 
+                    id: Date.now(), 
+                    item: fd.get('item'), 
+                    qty: fd.get('qty'), 
+                    from: fd.get('from'), 
+                    status: '待處理', 
+                    priority: fd.get('priority') 
+                }]); 
+                addToast('Success', 'Request Submitted'); 
+                setIsModalOpen(false); 
+            };
+
             const handleGearReturn = (id, isDonating) => { if(confirm('Return?')) { setBorrowedGear(p => p.filter(i => i.id !== id)); addToast('Success', isDonating ? 'Returned & Donated' : 'Returned'); } };
 
             const renderContent = () => {
@@ -505,7 +522,7 @@
                 <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
                     <ToastContainer toasts={toasts} removeToast={(id) => setToasts(p => p.filter(t => t.id !== id))} />
                     
-                    {/* Mobile Header (Added for v7.4) */}
+                    {/* Mobile Header */}
                     <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center px-4">
                         {history.length > 1 && (
                             <button onClick={goBack} className="p-2 mr-2 -ml-2 rounded-full hover:bg-slate-100">
@@ -514,7 +531,7 @@
                         )}
                         <div className="flex items-center gap-2 font-bold text-slate-800">
                             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                            ResQ v7.4
+                            ResQ v8.0
                         </div>
                     </div>
 
@@ -523,10 +540,8 @@
                         <div className="p-5 border-b border-slate-100 flex flex-col items-start gap-1">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v7.4</h1></div>
+                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v8.0</h1></div>
                             </div>
-                            
-                            {/* Designer Credit & User Info (Integrated in Sidebar) */}
                             <div className="hidden md:block mt-3 w-full">
                                 {currentUser.unit && <div className="bg-slate-50 p-2 rounded text-xs font-bold text-slate-600 mb-2 border border-slate-200"><span className="block text-[8px] text-slate-400 uppercase tracking-widest">Unit</span>{currentUser.unit}</div>}
                                 <div className="flex items-center gap-2 mt-2 pl-1">
@@ -537,18 +552,11 @@
                         </div>
 
                         <div className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-                            {/* Back Button (History Navigation) - Sidebar */}
-                            <button 
-                                onClick={goBack}
-                                disabled={history.length <= 1}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm mb-2 ${history.length <= 1 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
-                            >
+                            <button onClick={goBack} disabled={history.length <= 1} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm mb-2 ${history.length <= 1 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 border border-slate-100'}`}>
                                 <i data-lucide="arrow-left" width="18"></i>
                                 <span className="hidden md:inline">{TRANSLATIONS[lang].nav.back}</span>
                             </button>
-
                             <div className="border-b border-slate-100 mb-2"></div>
-
                             {['dashboard', 'medical', 'social', 'volunteers', 'logistics', 'resource', 'life'].map(key => (
                                 <button key={key} onClick={() => navigateTo(key)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
                                     <i data-lucide={key === 'dashboard' ? 'layout-dashboard' : key === 'map' ? 'map' : key === 'medical' ? 'activity' : key === 'volunteers' ? 'users' : key === 'logistics' ? 'package' : key === 'social' ? 'message-circle' : key === 'resource' ? 'recycle' : 'coffee'} width="18"></i>
@@ -564,7 +572,6 @@
                     {/* Main */}
                     <main className="flex-1 flex flex-col min-w-0 relative mt-16 md:mt-0">
                         <div className="flex-1 overflow-y-auto pb-24">
-                            {/* Breadcrumb Back Button (Main Area) */}
                             {history.length > 1 && (
                                 <div className="px-6 pt-6 pb-0">
                                     <button onClick={goBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm">
@@ -575,26 +582,45 @@
                             )}
                             {renderContent()}
                         </div>
-                        <SafetyBar 
-                            lang={lang} 
-                            onSOS={() => alert('SOS Sent!')} 
-                            isSharing={isLocationSharing} 
-                            toggleSharing={() => { setIsLocationSharing(!isLocationSharing); addToast('GPS', isLocationSharing ? 'Tracking Stopped' : 'Tracking Enabled'); }}
-                            isMeshActive={isMeshActive}
-                            toggleMesh={() => { setIsMeshActive(!isMeshActive); addToast('Network', !isMeshActive ? 'Switched to Mesh Mode (D2D)' : 'Switched to Internet'); }}
-                        />
+                        <SafetyBar lang={lang} onSOS={() => alert('SOS Sent!')} isSharing={isLocationSharing} toggleSharing={() => { setIsLocationSharing(!isLocationSharing); addToast('GPS', isLocationSharing ? 'Tracking Stopped' : 'Tracking Enabled'); }} isMeshActive={isMeshActive} toggleMesh={() => { setIsMeshActive(!isMeshActive); addToast('Network', !isMeshActive ? 'Switched to Mesh Mode (D2D)' : 'Switched to Internet'); }} />
                     </main>
 
-                    {/* Triage Modal */}
-                    <Modal isOpen={isModalOpen && modalType === 'triage'} onClose={() => setIsModalOpen(false)} title={TRANSLATIONS[lang].headers.triage}>
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                            {['red', 'yellow', 'green', 'black'].map(level => (
-                                <button key={level} onClick={() => { setIsModalOpen(false); addToast('Triage', `Patient tagged: ${level.toUpperCase()}`); }} className={`p-4 rounded-xl font-bold text-sm border-2 border-transparent hover:scale-105 transition-transform triage-${level}`}>
-                                    {TRANSLATIONS[lang].triage[level]}
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-xs text-slate-400 text-center">Select patient condition based on RPM (Respiration, Perfusion, Mental Status).</p>
+                    {/* Modal with Correct Form Logic */}
+                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'volunteer' ? TRANSLATIONS[lang].actions.addVolunteer : modalType === 'triage' ? TRANSLATIONS[lang].headers.triage : TRANSLATIONS[lang].actions.submitRequest}>
+                        {modalType === 'triage' ? (
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                {['red', 'yellow', 'green', 'black'].map(level => (
+                                    <button key={level} onClick={() => { setIsModalOpen(false); addToast('Triage', `Patient tagged: ${level.toUpperCase()}`); }} className={`p-4 rounded-xl font-bold text-sm border-2 border-transparent hover:scale-105 transition-transform triage-${level}`}>
+                                        {TRANSLATIONS[lang].triage[level]}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <form onSubmit={modalType === 'volunteer' ? handleVolunteerAdd : handleLogisticsAdd} className="space-y-4">
+                                {modalType === 'volunteer' ? (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.name}</label><input name="name" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderName} /></div>
+                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.phone}</label><input name="phone" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderPhone} /></div>
+                                        </div>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.skill}</label><input name="skill" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderSkill} /></div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.item}</label><input name="item" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderItem} /></div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.qty}</label><input name="qty" type="number" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                                            <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.priority}</label><select name="priority" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+                                        </div>
+                                        <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.from}</label><input name="from" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderFrom} /></div>
+                                    </>
+                                )}
+                                <div className="pt-4 flex justify-end gap-3">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">{TRANSLATIONS[lang].actions.cancel}</button>
+                                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-700 transition-colors">{TRANSLATIONS[lang].actions.confirmAdd}</button>
+                                </div>
+                            </form>
+                        )}
                     </Modal>
                 </div>
             );
