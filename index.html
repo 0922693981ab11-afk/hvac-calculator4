@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v7.4 - 強化導航版</title>
+    <title>災害救助行動指揮系統 v7.5 - 返回功能修復版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -199,17 +199,16 @@
             </div>
         );
 
-        // --- Login / Registration View (Major Update) ---
+        // --- Login / Registration View ---
         const LoginView = ({ onLogin, lang, setLang }) => {
             const t = TRANSLATIONS[lang];
-            const [mode, setMode] = useState('login'); // 'login' or 'register'
+            const [mode, setMode] = useState('login'); 
             const [regData, setRegData] = useState({ unit: '', name: '', id: '', role: 'vol' });
 
             useEffect(() => { lucide.createIcons(); }, []);
 
             const handleRegister = (e) => {
                 e.preventDefault();
-                // Find role color/icon
                 const roleConfig = ROLES_OPTIONS.find(r => r.id === regData.role) || ROLES_OPTIONS[3];
                 const userData = {
                     id: regData.role,
@@ -228,7 +227,7 @@
                     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
-                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v7.4</h1>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v7.5</h1>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
 
@@ -284,14 +283,14 @@
             );
         };
 
-        // --- Sub-Views (Dashboard, Map, etc.) same as v7.1 but integrated ---
+        // --- Sub-Views ---
         
         const DashboardView = ({ stats, lang, onQuickAction }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
                     <div className="flex justify-between items-end mb-8">
-                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v7.4 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
+                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v7.5 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
                         <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
