@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v1.0 - 介面優化與定位授權版</title>
+    <title>災害救助行動指揮系統 v7.2 - 人員登錄強化版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,12 +20,12 @@
         :root { --primary: #0f172a; --accent: #2563eb; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; }
         
-        /* 玻璃擬態與動畫 */
+        /* Glassmorphism & Animations */
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .login-pattern { background-color: #f8fafc; background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px); background-size: 24px 24px; }
-        .map-bg { background-image: url('https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/121.5,24.0,10,0/1200x800?access_token=none'); background-size: cover; background-position: center; }
+        .login-pattern { background-color: #f8fafc; background-image: radial-gradient(#94a3b8 0.5px, transparent 0.5px); background-size: 24px 24px; }
+        .map-bg { background-image: url('https://api.mapbox.com/styles/v1/mapbox/light-v11/static/121.5,24.0,10,0/1200x800?access_token=none'); background-size: cover; background-position: center; }
         
-        /* SOS 按鈕特效 */
+        /* SOS & Mesh Animation */
         .sos-btn {
             background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%);
             box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
@@ -39,9 +39,19 @@
         @keyframes slideIn { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .toast-enter { animation: slideIn 0.3s ease-out forwards; }
         
-        /* 切換開關樣式 */
-        .toggle-checkbox:checked { right: 0; border-color: #10B981; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #10B981; }
+        /* Triage Colors */
+        .triage-red { background-color: #ef4444; color: white; border: 2px solid #b91c1c; }
+        .triage-yellow { background-color: #eab308; color: black; border: 2px solid #a16207; }
+        .triage-green { background-color: #22c55e; color: white; border: 2px solid #15803d; }
+        .triage-black { background-color: #1f2937; color: white; border: 2px solid #000000; }
+
+        /* Mesh Network Indicator */
+        .mesh-active { animation: mesh-pulse 3s infinite; }
+        @keyframes mesh-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(147, 51, 234, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-hidden">
@@ -50,193 +60,94 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback } = React;
 
-        // --- i18n 多國語言設定 ---
+        // --- i18n Translations (ZH-TW First) ---
         const TRANSLATIONS = {
             'zh-TW': {
                 appTitle: '災害救助行動指揮系統',
-                appSubtitle: '整合 ICS 指揮體系與資材循環機制',
-                loginRole: '請選擇您的身份進入系統',
-                systemStatus: '系統狀態',
-                online: '全線正常運作',
-                designer: '設計人: 吳啓仲',
-                roles: {
-                    ic: { name: '指揮官 (IC)', desc: '全權指揮、決策下達' },
-                    ops: { name: '作業組 (Ops)', desc: '搜救、醫療、工程' },
-                    log: { name: '後勤組 (Log)', desc: '物資、運輸、通訊' },
-                    vol: { name: '志工隊 (Vol)', desc: '人力支援、民眾服務' }
+                appSubtitle: '整合 D2D 通訊、醫療檢傷與資源循環',
+                login: {
+                    title: '人員/單位 進場登錄',
+                    quickLogin: '快速演示登入',
+                    registration: '新單位報到註冊',
+                    unitName: '單位名稱 (如: 台南特搜)',
+                    personName: '人員姓名',
+                    idNumber: '識別編號 (ID)',
+                    roleSelect: '任務職掌',
+                    submitReg: '提交報到資訊',
+                    backToLogin: '返回登入'
                 },
-                nav: {
-                    center: '指揮中心',
-                    dashboard: '指揮總覽',
-                    map: '戰情地圖',
-                    manage: '管理模組',
-                    volunteers: '人力管理',
-                    logistics: '後勤調度',
-                    personal: '個人與安全',
-                    resource: '資材循環',
-                    life: '生活後勤',
-                    logout: '登出'
-                },
-                stats: {
-                    manpower: '前線人力',
-                    requests: '待處理需求',
-                    recycle: '資材循環率',
-                    shelter: '避難負荷',
-                    unitPerson: '人',
-                    unitCase: '件'
-                },
-                headers: {
-                    alert: '指揮中心公告 (CAP Alert)',
-                    gisControl: 'GIS 圖層控制',
-                    borrowed: '借用中資材',
-                    myGear: '個人自攜清單',
-                    lifeSupport: '生活後勤保障',
-                    quickActions: '快速行動'
-                },
-                actions: {
-                    addVolunteer: '登錄志工',
-                    submitRequest: '提交需求',
-                    scan: '掃碼作業',
-                    return: '歸還',
-                    donate: '捐贈',
-                    sign: '簽到',
-                    approve: '核准',
-                    receive: '簽收',
-                    sos: 'SOS 求救',
-                    shareLocation: '分享位置',
-                    stopSharing: '停止分享'
-                },
-                status: {
-                    overdue: '逾時',
-                    checkedIn: '已報到',
-                    booking: '預約中',
-                    pending: '待處理',
-                    shipping: '運送中',
-                    arrived: '已送達',
-                    urgent: '緊急'
-                },
-                safety: {
-                    heartbeat: '安全心跳',
-                    connected: '系統連線中',
-                    location: '定位服務',
-                    locationOff: '未分享',
-                    locationOn: '即時回報中',
-                    confirmSOS: '確認發送求救訊號？',
-                    sosDesc: '將傳送精確座標與錄音至最近的救援小組與指揮中心。',
-                    locationConsentTitle: '開啟位置回報',
-                    locationConsentDesc: '為了您的安全與指揮調度效率，系統需要存取您的 GPS 位置。資料僅供本次救災任務使用。',
-                    cancel: '取消',
-                    agree: '同意並開啟',
-                    send: '立即發送 SOS'
-                }
+                nav: { dashboard: '指揮總覽', map: '戰情地圖', medical: '緊急醫療', volunteers: '人力管理', logistics: '後勤調度', social: '社群情資', resource: '資材循環', life: '生活後勤', logout: '登出' },
+                stats: { manpower: '前線人力', requests: '待處理需求', triage: '檢傷總數', sensors: 'IoT 異常', recycle: '資材循環率', shelter: '避難負荷' },
+                headers: { alert: '官方與社群警訊', gisControl: 'GIS 圖層', quickActions: '快速行動', triage: '大量傷患檢傷 (START)', mesh: 'D2D 網狀網路', social: '社群輿情監測', borrowed: '借用中資材', myGear: '個人自攜清單', lifeSupport: '生活後勤保障' },
+                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收' },
+                triage: { red: '第一優先 (紅)', yellow: '第二優先 (黃)', green: '第三優先 (綠)', black: '死亡 (黑)', desc: '依據呼吸、循環、意識 (RPM) 快速分類' },
+                mesh: { active: 'Mesh 網狀網路啟用', inactive: '網際網路連線中', desc: '基礎設施中斷時，透過藍牙/WiFi Direct 進行近接中繼傳輸。' },
+                safety: { locationConsentTitle: '開啟位置回報', locationConsentDesc: '為了您的安全，系統需存取 GPS。資料僅供本次任務使用。', agree: '同意並開啟', heartbeat: '安全心跳', connected: '系統連線中', location: '定位服務', locationOff: '未分享', locationOn: '即時回報中', confirmSOS: '確認發送求救訊號？', sosDesc: '將傳送精確座標與錄音至最近的救援小組與指揮中心。', cancel: '取消', send: '立即發送 SOS' },
+                status: { overdue: '逾時', checkedIn: '已報到', booking: '預約中', pending: '待處理', shipping: '運送中', arrived: '已送達', urgent: '緊急' },
+                designerLabel: '設計者 吳啓仲'
             },
             'en-US': {
                 appTitle: 'Disaster Relief Command System',
-                appSubtitle: 'Integrated ICS Command & Resource Circularity',
-                loginRole: 'Select Role to Login',
-                systemStatus: 'System Status',
-                online: 'Operational',
-                designer: 'Designer: Wu Qi-Zhong',
-                roles: {
-                    ic: { name: 'Incident Cmdr (IC)', desc: 'Full Authority & Decision' },
-                    ops: { name: 'Operations (Ops)', desc: 'SAR, Medical, Engineering' },
-                    log: { name: 'Logistics (Log)', desc: 'Supply, Transport, Comms' },
-                    vol: { name: 'Volunteers (Vol)', desc: 'Manpower & Public Service' }
+                appSubtitle: 'Integrated D2D Comms, EMS Triage & Resource Circularity',
+                login: {
+                    title: 'Personnel / Unit Login',
+                    quickLogin: 'Quick Demo Login',
+                    registration: 'New Unit Registration',
+                    unitName: 'Unit Name (e.g. SAR Team A)',
+                    personName: 'Full Name',
+                    idNumber: 'ID Number',
+                    roleSelect: 'Role / Function',
+                    submitReg: 'Submit Registration',
+                    backToLogin: 'Back to Login'
                 },
-                nav: {
-                    center: 'Command Center',
-                    dashboard: 'Dashboard',
-                    map: 'Situation Map',
-                    manage: 'Management',
-                    volunteers: 'Volunteers',
-                    logistics: 'Logistics',
-                    personal: 'Personal & Safety',
-                    resource: 'Circularity',
-                    life: 'Life Support',
-                    logout: 'Logout'
-                },
-                stats: {
-                    manpower: 'Manpower',
-                    requests: 'Pending Req',
-                    recycle: 'Recycle Rate',
-                    shelter: 'Shelter Load',
-                    unitPerson: '',
-                    unitCase: ''
-                },
-                headers: {
-                    alert: 'Command Center Alert (CAP)',
-                    gisControl: 'GIS Layers',
-                    borrowed: 'Borrowed Gear',
-                    myGear: 'My Gear',
-                    lifeSupport: 'Life Support',
-                    quickActions: 'Quick Actions'
-                },
-                actions: {
-                    addVolunteer: 'Add Volunteer',
-                    submitRequest: 'Submit Request',
-                    scan: 'Scan QR',
-                    return: 'Return',
-                    donate: 'Donate',
-                    sign: 'Check-In',
-                    approve: 'Approve',
-                    receive: 'Receive',
-                    sos: 'SOS Alert',
-                    shareLocation: 'Share Loc',
-                    stopSharing: 'Stop Sharing'
-                },
-                status: {
-                    overdue: 'Overdue',
-                    checkedIn: 'Checked-In',
-                    booking: 'Booking',
-                    pending: 'Pending',
-                    shipping: 'Shipping',
-                    arrived: 'Arrived',
-                    urgent: 'Urgent'
-                },
-                safety: {
-                    heartbeat: 'Heartbeat',
-                    connected: 'Connected',
-                    location: 'Location Svc',
-                    locationOff: 'Off',
-                    locationOn: 'Tracking',
-                    confirmSOS: 'Confirm SOS Signal?',
-                    sosDesc: 'Transmitting coords & audio to Rescue Team.',
-                    locationConsentTitle: 'Enable Location Tracking',
-                    locationConsentDesc: 'For safety and dispatch efficiency, we need access to your GPS. Data is used for this mission only.',
-                    cancel: 'Cancel',
-                    agree: 'Agree & Enable',
-                    send: 'Send SOS Now'
-                }
+                nav: { dashboard: 'Dashboard', map: 'Situation Map', medical: 'Medical EMS', volunteers: 'Volunteers', logistics: 'Logistics', social: 'Social Intel', resource: 'Circularity', life: 'Life Support', logout: 'Logout' },
+                stats: { manpower: 'Manpower', requests: 'Pending Req', triage: 'Triage Count', sensors: 'IoT Alerts', recycle: 'Recycle Rate', shelter: 'Shelter Load' },
+                headers: { alert: 'Official & Social Alerts', gisControl: 'GIS Layers', quickActions: 'Quick Actions', triage: 'Mass Casualty Triage', mesh: 'D2D Mesh Network', social: 'Social Media Monitoring', borrowed: 'Borrowed Gear', myGear: 'My Gear', lifeSupport: 'Life Support' },
+                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive' },
+                triage: { red: 'Immediate (Red)', yellow: 'Delayed (Yellow)', green: 'Minor (Green)', black: 'Deceased (Black)', desc: 'Rapid sorting based on RPM (Respiration, Perfusion, Mental Status)' },
+                mesh: { active: 'Mesh Network Active', inactive: 'Internet Connected', desc: 'Use Bluetooth/WiFi Direct for proximity relay when infra fails.' },
+                safety: { locationConsentTitle: 'Enable Tracking', locationConsentDesc: 'GPS access required for safety. Data used for mission only.', agree: 'Agree & Enable', heartbeat: 'Heartbeat', connected: 'Connected', location: 'Location Svc', locationOff: 'Off', locationOn: 'Tracking', confirmSOS: 'Confirm SOS Signal?', sosDesc: 'Transmitting coords & audio to Rescue Team.', cancel: 'Cancel', send: 'Send SOS Now' },
+                status: { overdue: 'Overdue', checkedIn: 'Checked-In', booking: 'Booking', pending: 'Pending', shipping: 'Shipping', arrived: 'Arrived', urgent: 'Urgent' },
+                designerLabel: 'Designer: Wu Qi-Zhong'
             }
         };
 
         // --- Mock Data ---
-        const ROLES_DATA = [
-            { id: 'ic', icon: 'shield-check', color: 'bg-red-600' },
-            { id: 'ops', icon: 'activity', color: 'bg-blue-600' },
-            { id: 'log', icon: 'package', color: 'bg-orange-500' },
-            { id: 'vol', icon: 'users', color: 'bg-slate-600' },
-        ];
-        
-        const LIFE_SUPPORT_FACILITIES = [
-            { id: 'f1', name: 'A區熱食站 (Food)', type: 'food', status: '供餐中', capacity: '50 left', location: 'Gym Entrance' },
-            { id: 'f2', name: 'B區淋浴間 (Shower)', type: 'shower', status: '排隊中', capacity: 'Wait 15m', location: 'North Field' },
-            { id: 'f3', name: '志工休息帳 (Sleep)', type: 'sleep', status: '額滿', capacity: 'Full', location: 'Campus 2' },
-            { id: 'f4', name: '行動充電站 (Power)', type: 'power', status: '可用', capacity: '80%', location: 'HQ Side' },
+        const ROLES_OPTIONS = [
+            { id: 'ic', name: '指揮官 (IC)', icon: 'shield-check', color: 'bg-red-600' },
+            { id: 'ops', name: '作業組 (Ops)', icon: 'activity', color: 'bg-blue-600' },
+            { id: 'log', name: '後勤組 (Log)', icon: 'package', color: 'bg-orange-500' },
+            { id: 'vol', name: '志工隊 (Vol)', icon: 'users', color: 'bg-slate-600' },
         ];
 
-        // --- UI Components ---
+        const SOCIAL_FEED = [
+            { id: 1, source: 'Facebook', user: '民眾A', content: '體育館後方好像有圍牆倒塌，壓到車子！', time: '10:55', status: '待查證', type: 'risk' },
+            { id: 2, source: 'Line群組', user: '里長B', content: 'C區水管破裂，需要沙包支援。', time: '10:50', status: '已證實', type: 'logistics' },
+            { id: 3, source: 'PTT', user: '鄉民C', content: '聽說大橋斷了？求證！', time: '10:48', status: '已闢謠', type: 'rumor' }
+        ];
+        const IOT_ALERTS = [
+            { id: 1, type: 'InSAR', location: '山腳斷層監測站', value: '位移 2.5cm', status: 'Warning', desc: '地層變位異常' },
+            { id: 2, type: 'WaterLevel', location: '中游觀測井', value: '水位 85%', status: 'Normal', desc: '水位警戒線下' }
+        ];
+        const TRIAGE_DATA = [
+            { id: 1, code: 'T-001', level: 'red', condition: '大量出血, 意識不清', location: 'Zone A', time: '11:00' },
+            { id: 2, code: 'T-002', level: 'yellow', condition: '腿部骨折, 意識清楚', location: 'Zone A', time: '11:05' },
+            { id: 3, code: 'T-003', level: 'green', condition: '擦傷', location: 'Zone B', time: '11:10' }
+        ];
+        const LIFE_SUPPORT_FACILITIES = [
+            { id: 'f1', name: 'A區熱食站', type: 'food', status: '供餐中', capacity: '50 left', location: 'Gym Entrance' },
+            { id: 'f2', name: 'B區淋浴間', type: 'shower', status: '排隊中', capacity: 'Wait 15m', location: 'North Field' },
+            { id: 'f3', name: '志工休息帳', type: 'sleep', status: '額滿', capacity: 'Full', location: 'Campus 2' },
+            { id: 'f4', name: '行動充電站', type: 'power', status: '可用', capacity: '80%', location: 'HQ Side' },
+        ];
+
+        // --- Components ---
         const ToastContainer = ({ toasts, removeToast }) => (
-            <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4">
+            <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[70] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
                 {toasts.map(toast => (
                     <div key={toast.id} className="toast-enter pointer-events-auto bg-slate-800 text-white shadow-xl rounded-lg p-3 flex items-center gap-3">
-                        <div className={`p-1 rounded-full ${toast.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}>
-                            <i data-lucide={toast.type === 'success' ? 'check' : 'info'} width="14" height="14"></i>
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-bold">{toast.title}</p>
-                            <p className="text-xs text-slate-300">{toast.message}</p>
-                        </div>
+                        <div className={`p-1 rounded-full ${toast.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}><i data-lucide={toast.type === 'success' ? 'check' : 'info'} width="14"></i></div>
+                        <div className="flex-1"><p className="text-sm font-bold">{toast.title}</p><p className="text-xs text-slate-300">{toast.message}</p></div>
                     </div>
                 ))}
             </div>
@@ -245,13 +156,11 @@
         const Modal = ({ isOpen, onClose, title, children }) => {
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl scale-100 animate-in zoom-in-95">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                                {title}
-                            </h3>
-                            <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full transition-colors text-slate-500"><i data-lucide="x" width="20"></i></button>
+                            <h3 className="font-bold text-lg text-slate-800">{title}</h3>
+                            <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full text-slate-500"><i data-lucide="x" width="20"></i></button>
                         </div>
                         <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
                     </div>
@@ -259,28 +168,19 @@
             );
         };
 
-        const PageHeader = ({ title, icon, color, btnText, onBtnClick }) => (
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                    <i data-lucide={icon} className={color}></i> {title}
-                </h2>
-                {btnText && (
-                    <button onClick={onBtnClick} className="w-full md:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-all active:scale-95">
-                        <i data-lucide="plus" width="16"></i> {btnText}
-                    </button>
-                )}
-            </div>
-        );
-
         const StatCard = ({ label, val, unit, icon, color }) => (
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
                 <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-${color.split('-')[1]}-600`}>
                     <i data-lucide={icon} className={color.replace('bg-', 'text-')}></i>
                 </div>
-                <div>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{label}</p>
-                    <p className="text-2xl font-black text-slate-800">{val} <span className="text-xs text-slate-400 font-normal">{unit}</span></p>
-                </div>
+                <div><p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">{label}</p><p className="text-2xl font-black text-slate-800">{val} <span className="text-xs text-slate-400 font-normal">{unit}</span></p></div>
+            </div>
+        );
+
+        const PageHeader = ({ title, icon, color, btnText, onBtnClick }) => (
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><i data-lucide={icon} className={color}></i> {title}</h2>
+                {btnText && <button onClick={onBtnClick} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition-all"><i data-lucide="plus" width="16"></i> {btnText}</button>}
             </div>
         );
 
@@ -299,79 +199,122 @@
             </div>
         );
 
-        const LanguageSwitch = ({ lang, setLang }) => (
-            <button onClick={() => setLang(lang === 'zh-TW' ? 'en-US' : 'zh-TW')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all border border-slate-200 shadow-sm">
-                <i data-lucide="globe" width="14"></i> {lang === 'zh-TW' ? 'English' : '中文'}
-            </button>
-        );
-
-        // --- Sub-Views ---
-
-        const DashboardView = ({ stats, lang, onQuickAction }) => {
+        // --- Login / Registration View (Major Update) ---
+        const LoginView = ({ onLogin, lang, setLang }) => {
             const t = TRANSLATIONS[lang];
+            const [mode, setMode] = useState('login'); // 'login' or 'register'
+            const [regData, setRegData] = useState({ unit: '', name: '', id: '', role: 'vol' });
+
+            useEffect(() => { lucide.createIcons(); }, []);
+
+            const handleRegister = (e) => {
+                e.preventDefault();
+                // Find role color/icon
+                const roleConfig = ROLES_OPTIONS.find(r => r.id === regData.role) || ROLES_OPTIONS[3];
+                const userData = {
+                    id: regData.role,
+                    name: regData.name,
+                    unit: regData.unit,
+                    idNumber: regData.id,
+                    icon: roleConfig.icon,
+                    color: roleConfig.color
+                };
+                onLogin(userData);
+            };
+
             return (
-                <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
-                    {/* Header */}
-                    <div className="flex justify-between items-end mb-8">
-                        <div>
-                            <h2 className="text-3xl font-black text-slate-800 tracking-tight">{t.nav.dashboard}</h2>
-                            <p className="text-sm text-slate-500 font-medium mt-1">Hualien 0403 Project <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p>
-                        </div>
-                        <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> {t.online}
-                        </span>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        {stats.map((stat, idx) => <StatCard key={idx} {...stat} />)}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Quick Actions Panel */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm h-full">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <i data-lucide="zap" width="16" className="text-yellow-500"></i> {t.headers.quickActions}
-                            </h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => onQuickAction('scan')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100">
-                                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><i data-lucide="qr-code"></i></div>
-                                    <span className="text-xs font-bold text-slate-700">{t.actions.scan}</span>
-                                </button>
-                                <button onClick={() => onQuickAction('volunteer')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100">
-                                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i data-lucide="user-plus"></i></div>
-                                    <span className="text-xs font-bold text-slate-700">{t.actions.addVolunteer}</span>
-                                </button>
-                                <button onClick={() => onQuickAction('logistics')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100">
-                                    <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center"><i data-lucide="package-plus"></i></div>
-                                    <span className="text-xs font-bold text-slate-700">{t.actions.submitRequest}</span>
-                                </button>
-                                <button onClick={() => onQuickAction('map')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100">
-                                    <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center"><i data-lucide="map"></i></div>
-                                    <span className="text-xs font-bold text-slate-700">{t.nav.map}</span>
-                                </button>
-                            </div>
+                <div className="h-screen w-full flex items-center justify-center login-pattern p-4 relative">
+                    <button onClick={() => setLang(lang === 'zh-TW' ? 'en-US' : 'zh-TW')} className="absolute top-6 right-6 bg-white px-3 py-1 rounded shadow text-sm font-bold border border-slate-200">{lang === 'zh-TW' ? 'English' : '中文'}</button>
+                    <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v7.2</h1>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
 
-                        {/* Alert Panel */}
-                        <div className="lg:col-span-2 bg-slate-900 text-white rounded-2xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between">
-                            <div className="relative z-10">
-                                <h3 className="text-lg font-bold flex items-center gap-2 mb-6"><i data-lucide="bell" className="text-yellow-400"></i> {t.headers.alert}</h3>
-                                <div className="space-y-3">
-                                    <div className="bg-white/10 p-4 rounded-xl border border-white/10 flex gap-4 backdrop-blur-sm items-start">
-                                        <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400 mt-1"><i data-lucide="alert-triangle" width="20"></i></div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="px-2 py-0.5 bg-yellow-500 text-slate-900 text-[10px] font-black rounded uppercase">Warning</span>
-                                                <span className="text-slate-400 font-mono text-xs">10:45</span>
-                                            </div>
-                                            <p className="text-sm font-bold text-white">Aftershock Alert (Level: Yellow)</p>
-                                            <p className="text-xs text-slate-300 mt-1 leading-relaxed">System predicts potential aftershocks scale > 4.0 within next 2 hours. All field units please stay clear of hazard zones.</p>
+                        {mode === 'login' ? (
+                            <>
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{t.login.quickLogin}</h3>
+                                <div className="space-y-3 mb-6">
+                                    {ROLES_OPTIONS.map(role => (
+                                        <button key={role.id} onClick={() => onLogin({...role, unit: 'Command Center', name: 'User Demo'})} className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-900 hover:text-white transition-all text-left group">
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${role.color}`}><i data-lucide={role.icon}></i></div>
+                                            <div className="flex-1"><p className="font-bold text-sm">{role.name}</p></div>
+                                            <i data-lucide="chevron-right" className="opacity-0 group-hover:opacity-100 transition-all"></i>
+                                        </button>
+                                    ))}
+                                </div>
+                                <button onClick={() => setMode('register')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                                    <i data-lucide="user-plus" width="18"></i> {t.login.registration}
+                                </button>
+                            </>
+                        ) : (
+                            <form onSubmit={handleRegister} className="animate-in slide-in-from-right duration-300">
+                                <div className="flex items-center gap-2 mb-6">
+                                    <button type="button" onClick={() => setMode('login')} className="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="arrow-left" width="20"></i></button>
+                                    <h3 className="text-lg font-bold text-slate-800">{t.login.registration}</h3>
+                                </div>
+                                <div className="space-y-4">
+                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">{t.login.unitName}</label><input required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={regData.unit} onChange={e=>setRegData({...regData, unit:e.target.value})} placeholder="例如: 台北市搜救隊" /></div>
+                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">{t.login.personName}</label><input required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={regData.name} onChange={e=>setRegData({...regData, name:e.target.value})} /></div>
+                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">{t.login.idNumber}</label><input required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={regData.id} onChange={e=>setRegData({...regData, id:e.target.value})} placeholder="例如: P-1024" /></div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">{t.login.roleSelect}</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {ROLES_OPTIONS.map(role => (
+                                                <button type="button" key={role.id} onClick={() => setRegData({...regData, role: role.id})} className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-2 ${regData.role === role.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-600'}`}>
+                                                    <div className={`w-2 h-2 rounded-full ${role.color}`}></div>{role.name}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
+                                <button type="submit" className="w-full mt-6 py-3 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">{t.login.submitReg}</button>
+                            </form>
+                        )}
+
+                        <div className="mt-8 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold border-t border-slate-100 pt-4">
+                            <span>{t.designerLabel}</span>
+                            <a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" title="聯繫設計者" className="hover:text-blue-500 transition-colors">
+                                <i data-lucide="mail" width="12"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Sub-Views (Dashboard, Map, etc.) same as v7.1 but integrated ---
+        
+        const DashboardView = ({ stats, lang, onQuickAction }) => {
+            const t = TRANSLATIONS[lang];
+            return (
+                <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
+                    <div className="flex justify-between items-end mb-8">
+                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v7.2 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
+                        <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        {stats.map((stat, idx) => <StatCard key={idx} {...stat} />)}
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="zap" width="16" className="text-yellow-500"></i> {t.headers.quickActions}</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => onQuickAction('triage')} className="p-4 bg-red-50 hover:bg-red-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-red-100"><div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center"><i data-lucide="activity"></i></div><span className="text-xs font-bold text-slate-700">{t.actions.triage}</span></button>
+                                <button onClick={() => onQuickAction('scan')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100"><div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><i data-lucide="qr-code"></i></div><span className="text-xs font-bold text-slate-700">{t.actions.scan}</span></button>
+                                <button onClick={() => onQuickAction('volunteer')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100"><div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i data-lucide="user-plus"></i></div><span className="text-xs font-bold text-slate-700">{t.actions.addVolunteer}</span></button>
+                                <button onClick={() => onQuickAction('logistics')} className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors border border-slate-100"><div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center"><i data-lucide="package-plus"></i></div><span className="text-xs font-bold text-slate-700">{t.actions.submitRequest}</span></button>
                             </div>
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-3xl rounded-full pointer-events-none"></div>
+                        </div>
+                        <div className="lg:col-span-2 bg-slate-900 text-white rounded-2xl p-6 relative overflow-hidden shadow-xl flex flex-col justify-between">
+                            <div className="relative z-10">
+                                <h3 className="text-lg font-bold flex items-center gap-2 mb-4"><i data-lucide="bell" className="text-yellow-400"></i> {t.headers.alert}</h3>
+                                <div className="space-y-3 h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                    {IOT_ALERTS.map(alert => (<div key={alert.id} className="bg-red-500/10 p-3 rounded-xl border border-red-500/30 flex gap-3 items-center backdrop-blur-sm"><i data-lucide="radio" className="text-red-400" width="18"></i><div className="flex-1"><p className="text-xs font-bold text-red-200">IoT: {alert.type}</p><p className="text-sm font-bold text-white">{alert.location} - {alert.value}</p></div><span className="text-[10px] bg-red-500 px-2 py-1 rounded font-bold shadow">{alert.status}</span></div>))}
+                                    {SOCIAL_FEED.map(feed => (<div key={feed.id} className="bg-white/10 p-3 rounded-xl border border-white/10 flex gap-3 backdrop-blur-sm"><div className="p-2 bg-blue-500/20 rounded-lg text-blue-300 mt-1"><i data-lucide="message-circle" width="16"></i></div><div className="flex-1"><div className="flex justify-between items-center mb-1"><span className="text-[10px] text-slate-400">{feed.source} • {feed.user}</span><span className="text-[10px] text-slate-400">{feed.time}</span></div><p className="text-sm text-slate-200">{feed.content}</p></div><button className="text-[10px] bg-white/20 hover:bg-white/30 px-3 py-1 rounded h-fit self-center transition-colors border border-white/20">{t.actions.verify}</button></div>))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -381,194 +324,158 @@
         const MapView = ({ mapLayers, toggleLayer, isSharing, lang }) => (
             <div className="h-full relative bg-slate-200 w-full animate-in fade-in">
                 <div className="absolute inset-0 map-bg opacity-90"></div>
-                
-                {/* Me Marker (Only if Sharing) */}
-                {isSharing && (
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-in zoom-in duration-300">
-                        <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg relative z-10"></div>
-                        <div className="w-12 h-12 bg-blue-500/20 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-ping"></div>
-                        <div className="mt-2 px-2 py-1 bg-white/90 backdrop-blur rounded-md shadow-md text-[10px] font-bold text-slate-700">Me</div>
-                    </div>
-                )}
-
-                {/* Layer Control */}
+                {isSharing && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-in zoom-in duration-300"><div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg relative z-10"></div><div className="w-12 h-12 bg-blue-500/20 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-ping"></div><div className="mt-2 px-2 py-1 bg-white/90 backdrop-blur rounded-md shadow-md text-[10px] font-bold text-slate-700">Me</div></div>}
                 <div className="absolute top-6 right-6 bg-white/95 backdrop-blur rounded-2xl p-4 shadow-xl border border-slate-200 flex flex-col gap-3 z-10 w-48">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">{TRANSLATIONS[lang].headers.gisControl}</span>
-                    {Object.keys(mapLayers).map(key => (
-                        <button key={key} onClick={() => toggleLayer(key)} className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${mapLayers[key] ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}>
-                            <span className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${key === 'hazard' ? 'bg-red-500' : key === 'resources' ? 'bg-blue-500' : 'bg-green-500'}`}></span>
-                                {key === 'hazard' ? 'Hazard Zone' : key === 'resources' ? 'Resources' : 'Volunteers'}
-                            </span>
-                            {mapLayers[key] && <i data-lucide="check" width="14"></i>}
-                        </button>
-                    ))}
+                    {Object.keys(mapLayers).map(key => (<button key={key} onClick={() => toggleLayer(key)} className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${mapLayers[key] ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}><span className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${key === 'hazard' ? 'bg-red-500' : key === 'resources' ? 'bg-blue-500' : 'bg-green-500'}`}></span>{key === 'hazard' ? 'Hazard' : key === 'resources' ? 'Resource' : 'Volunteer'}</span>{mapLayers[key] && <i data-lucide="check" width="14"></i>}</button>))}
                 </div>
                 {mapLayers.hazard && <div className="absolute top-1/3 left-1/4 animate-pulse"><div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center border-2 border-red-500 border-dashed"><i data-lucide="alert-triangle" className="text-red-600 w-8 h-8"></i></div></div>}
             </div>
         );
 
-        // ... [ResourceView, LifeView, VolunteersView, LogisticsView are conceptually similar, using the simplified design] ...
+        const MedicalView = ({ lang }) => {
+            const t = TRANSLATIONS[lang];
+            return (
+                <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
+                    <PageHeader title={t.nav.medical} icon="activity" color="text-red-600" btnText={t.actions.triage} onBtnClick={() => {}} />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="px-6 py-4">ID</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Condition</th><th className="px-6 py-4">Loc</th></tr></thead><tbody className="divide-y divide-slate-100">{TRIAGE_DATA.map(pt => (<tr key={pt.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-mono font-bold text-slate-700">{pt.code}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold triage-${pt.level}`}>{t.triage[pt.level]}</span></td><td className="px-6 py-4 text-slate-600">{pt.condition}</td><td className="px-6 py-4 text-slate-500 text-xs">{pt.location}</td></tr>))}</tbody></table>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 h-fit"><h3 className="text-sm font-bold text-slate-500 uppercase mb-4">Hospital Capacity</h3><div className="space-y-4"><div><div className="flex justify-between text-sm mb-1"><span className="font-bold text-slate-700">Tzu Chi</span><span className="text-red-500 font-bold">Full</span></div><div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{width: '95%'}}></div></div></div></div></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const VolunteersView = ({ data, onAdd, onUpdate, onDelete, lang }) => {
+            const t = TRANSLATIONS[lang];
+            return (
+                <div className="max-w-6xl mx-auto animate-in fade-in p-6">
+                    <PageHeader title={t.nav.volunteers} icon="users" color="text-blue-600" btnText={t.actions.addVolunteer} onBtnClick={onAdd} />
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
+                        <table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="px-6 py-4">Name / Contact</th><th className="px-6 py-4">Skill</th><th className="px-6 py-4">Time</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{data.length === 0 ? <tr><td colSpan="5"><EmptyState text="No Data" /></td></tr> : data.map(res => (<tr key={res.id} className="hover:bg-slate-50 transition-colors group"><td className="px-6 py-4"><div className="font-bold text-slate-800">{res.name}</div><div className="text-xs text-slate-400 font-mono">{res.phone}</div></td><td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs border border-slate-200">{res.skill}</span></td><td className="px-6 py-4 text-slate-500 font-mono text-xs">{new Date(res.time).toLocaleString()}</td><td className="px-6 py-4"><StatusBadge status={res.status} lang={lang} /></td><td className="px-6 py-4 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">{res.status !== '已報到' && <button onClick={() => onUpdate(res.id, '已報到')} className="px-2 py-1 bg-green-50 text-green-600 rounded border border-green-200 text-xs font-bold hover:bg-green-100">{t.actions.sign}</button>}<button onClick={() => onDelete(res.id)} className="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash-2" width="16"></i></button></div></td></tr>))}</tbody></table>
+                    </div>
+                </div>
+            );
+        };
+
+        const LogisticsView = ({ data, onAdd, onUpdate, lang }) => {
+            const t = TRANSLATIONS[lang];
+            return (
+                <div className="max-w-6xl mx-auto animate-in fade-in p-6">
+                    <PageHeader title={t.nav.logistics} icon="package" color="text-orange-500" btnText={t.actions.submitRequest} onBtnClick={onAdd} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        {data.length === 0 ? <div className="col-span-full"><EmptyState text="No Requests" /></div> : data.map(req => (<div key={req.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"><div className={`absolute left-0 top-0 bottom-0 w-1 ${req.priority === '緊急' ? 'bg-red-500' : 'bg-slate-300'}`}></div><div className="flex justify-between items-start mb-3 pl-2"><h4 className="font-bold text-slate-800 text-lg">{req.item}</h4><StatusBadge status={req.priority} lang={lang} /></div><div className="pl-2 space-y-2 text-sm text-slate-500"><div className="flex justify-between"><span>Qty: <strong className="text-slate-800">{req.qty}</strong></span><span>From: {req.from}</span></div><div className="flex justify-between items-center pt-3 border-t border-slate-100"><span className="text-xs font-bold text-blue-600"><StatusBadge status={req.status} lang={lang} /></span><div className="flex gap-2">{req.status === '待處理' && <button onClick={() => onUpdate(req.id, '運送中')} className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">{t.actions.approve}</button>}{req.status === '運送中' && <button onClick={() => onUpdate(req.id, '已送達')} className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700">{t.actions.receive}</button>}</div></div></div></div>))}
+                    </div>
+                </div>
+            );
+        };
+
         const ResourceView = ({ myGear, borrowedGear, onReturn, onScan, lang }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
                     <PageHeader title={t.nav.resource} icon="recycle" color="text-green-600" btnText={t.actions.scan} onBtnClick={onScan} />
-                    <div className="grid gap-6">
-                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="package-minus" width="16"></i> {t.headers.borrowed}</h3>
-                            <div className="space-y-3">
-                                {borrowedGear.length === 0 ? <EmptyState text="Empty" /> : borrowedGear.map(item => (
-                                    <div key={item.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                        <div><p className="font-bold text-slate-800">{item.name}</p><p className="text-xs text-slate-500 font-mono mt-1">ID: {item.id} • Src: {item.source}</p></div>
-                                        <div className="flex gap-2 w-full sm:w-auto">
-                                            <button onClick={() => onReturn(item.id, false)} className="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 shadow-sm">{t.actions.return}</button>
-                                            <button onClick={() => onReturn(item.id, true)} className="flex-1 sm:flex-none px-4 py-2 bg-green-50 text-green-700 rounded-lg text-xs font-bold hover:bg-green-100 border border-green-200 flex items-center justify-center gap-1">{t.actions.donate}</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                    <div className="mb-8"><h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">{t.headers.borrowed}</h3><div className="grid gap-4">{borrowedGear.length === 0 ? <EmptyState text="Empty" /> : borrowedGear.map(item => (<div key={item.id} className="bg-white p-4 rounded-xl border border-blue-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden gap-4"><div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div><div><p className="font-bold text-slate-800">{item.name}</p><p className="text-xs text-slate-500">Src: {item.source}</p></div><div className="flex gap-2 w-full md:w-auto"><button onClick={() => onReturn(item.id, false)} className="flex-1 md:flex-none px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200">{t.actions.return}</button><button onClick={() => onReturn(item.id, true)} className="flex-1 md:flex-none px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 border border-green-200 flex items-center justify-center gap-1"><i data-lucide="heart" width="12"></i> {t.actions.donate}</button></div></div>))}</div></div>
+                    <div><h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">{t.headers.myGear}</h3><div className="grid gap-4">{myGear.length === 0 ? <EmptyState text="Empty" /> : myGear.map(item => (<div key={item.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center"><div><p className="font-bold text-slate-700">{item.name}</p><p className="text-xs text-slate-500">Status: {item.status}</p></div></div>))}</div></div>
                 </div>
             );
         };
 
-        // --- Core Components (Safety & Login) ---
-
-        const LoginView = ({ onLogin, lang, setLang }) => {
+        const LifeView = ({ lang }) => {
             const t = TRANSLATIONS[lang];
-            useEffect(() => { lucide.createIcons(); }, []);
             return (
-                <div className="h-screen w-full flex items-center justify-center login-pattern p-4 relative">
-                    <div className="absolute top-6 right-6"><LanguageSwitch lang={lang} setLang={setLang} /></div>
-                    <div className="max-w-md w-full bg-white border border-slate-200 p-8 rounded-3xl shadow-2xl animate-in zoom-in duration-300">
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg mb-4 mx-auto"><i data-lucide="shield-check" className="text-white w-8 h-8"></i></div>
-                            <h1 className="text-2xl font-black text-slate-900 mb-1">{t.appTitle}</h1>
-                            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">v5.3 Optimized</p>
-                        </div>
-                        <div className="space-y-3">
-                            {ROLES_DATA.map(role => {
-                                const r = t.roles[role.id];
-                                return (
-                                    <button key={role.id} onClick={() => onLogin({...role, name: r.name})} className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-900 hover:text-white transition-all text-left group">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${role.color}`}><i data-lucide={role.icon}></i></div>
-                                        <div className="flex-1"><p className="font-bold text-sm">{r.name}</p><p className="text-[10px] opacity-60">{r.desc}</p></div>
-                                        <i data-lucide="chevron-right" className="opacity-0 group-hover:opacity-100 transition-all"></i>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <div className="mt-8 text-center text-[10px] text-slate-300 font-bold">{t.designer}</div>
+                <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
+                    <PageHeader title={t.headers.lifeSupport} icon="tent" color="text-orange-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{LIFE_SUPPORT_FACILITIES.map(fac => (<div key={fac.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-3"><div className={`p-3 rounded-xl ${fac.type === 'food' ? 'bg-orange-100 text-orange-600' : fac.type === 'shower' ? 'bg-blue-100 text-blue-600' : 'bg-yellow-100 text-yellow-600'}`}><i data-lucide={fac.type === 'food' ? 'utensils' : fac.type === 'shower' ? 'droplets' : 'zap'}></i></div><div><h4 className="font-bold text-slate-800">{fac.name}</h4><p className="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="map-pin" width="10"></i> {fac.location}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${fac.status === '額滿' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{fac.status}</span></div><div className="flex justify-between items-end border-t border-slate-100 pt-3"><span className="text-xs font-bold text-slate-400">Cap</span><span className="text-sm font-bold text-slate-800">{fac.capacity}</span></div></div>))}</div>
+                </div>
+            );
+        };
+
+        const SocialView = ({ lang }) => {
+            const t = TRANSLATIONS[lang];
+            return (
+                <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
+                    <PageHeader title={t.nav.social} icon="message-circle" color="text-blue-500" />
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm"><i data-lucide="info"></i><span>Aggregating public reports from Facebook, Line, and PTT for verification.</span></div>
+                        <div className="space-y-4">{SOCIAL_FEED.map(feed => (<div key={feed.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0"><div className="flex justify-between items-start"><div className="flex gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold">{feed.user[0]}</div><div><p className="font-bold text-slate-800">{feed.user} <span className="text-xs font-normal text-slate-400">via {feed.source}</span></p><p className="text-sm text-slate-600 mt-1">{feed.content}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${feed.status === '已證實' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{feed.status}</span></div><div className="flex gap-2 mt-3 pl-13 ml-13"><button className="text-xs text-blue-600 font-bold hover:underline">{t.actions.verify}</button><button className="text-xs text-slate-400 hover:text-slate-600">{t.actions.ignore}</button></div></div>))}</div>
                     </div>
                 </div>
             );
         };
 
-        const SafetyBar = ({ onSOS, lang, isSharing, toggleSharing }) => {
+        const SafetyBar = ({ onSOS, lang, isSharing, toggleSharing, isMeshActive, toggleMesh }) => {
             const t = TRANSLATIONS[lang].safety;
+            const tm = TRANSLATIONS[lang].mesh;
             return (
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 z-40 flex items-center justify-between shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                    <div className="flex items-center gap-4 md:gap-8 px-2">
-                        {/* Connection Status */}
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-500 animate-ping opacity-75"></div>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{t.heartbeat}</span>
-                                <span className="text-xs font-bold text-slate-800">{t.connected}</span>
-                            </div>
-                        </div>
-
-                        {/* Location Toggle (Crucial Update) */}
-                        <div className="hidden md:flex items-center gap-3 border-l border-slate-100 pl-6">
-                            <button 
-                                onClick={toggleSharing}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${isSharing ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-400 border border-slate-200'}`}
-                            >
-                                <i data-lucide={isSharing ? "map-pin" : "map-pin-off"} width="12"></i>
-                                {isSharing ? t.locationOn : t.locationOff}
-                            </button>
-                            {isSharing && <span className="text-[10px] font-mono text-slate-400">24.12N, 121.45E</span>}
-                        </div>
+                    <div className="flex items-center gap-4 md:gap-6 px-2 overflow-x-auto">
+                        <button onClick={toggleMesh} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${isMeshActive ? 'bg-purple-100 text-purple-700 border-purple-200 mesh-active' : 'bg-slate-50 text-slate-500 border-slate-200'}`}><i data-lucide={isMeshActive ? "network" : "wifi"} width="14"></i><span className="whitespace-nowrap">{isMeshActive ? tm.active : tm.inactive}</span></button>
+                        <button onClick={toggleSharing} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${isSharing ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-200'}`}><i data-lucide={isSharing ? "map-pin" : "map-pin-off"} width="14"></i><span className="whitespace-nowrap">{isSharing ? t.locationOn : t.locationOff}</span></button>
                     </div>
-                    
-                    {/* SOS Button */}
-                    <button onClick={onSOS} className="sos-btn rounded-xl px-6 py-3 flex items-center justify-center font-black text-white text-sm shadow-lg hover:scale-105 transition-transform active:scale-95 gap-2">
-                        <i data-lucide="alert-octagon" width="18"></i> SOS
-                    </button>
+                    <button onClick={onSOS} className="sos-btn rounded-xl px-5 py-2.5 flex items-center justify-center font-black text-white text-sm shadow-lg hover:scale-105 transition-transform active:scale-95 gap-2 whitespace-nowrap"><i data-lucide="alert-octagon" width="18"></i> SOS</button>
                 </div>
             );
         };
 
-        // --- Main App ---
+        // --- Main App Logic ---
         const App = () => {
             const [lang, setLang] = useState('zh-TW');
-            const t = TRANSLATIONS[lang];
-            const [currentUser, setCurrentUser] = useState(null);
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-            const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
-            const [isLocationModalOpen, setIsLocationModalOpen] = useState(false); // Location Consent Modal
-            const [isLocationSharing, setIsLocationSharing] = useState(false);     // Location State
-            const [mapLayers, setMapLayers] = useState({ hazard: true, resources: true, volunteers: true });
+            const [currentUser, setCurrentUser] = useState(null);
+            
+            const [isMeshActive, setIsMeshActive] = useState(false);
+            const [isLocationSharing, setIsLocationSharing] = useState(false);
+            const [toasts, setToasts] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalType, setModalType] = useState(null);
-            const [toasts, setToasts] = useState([]);
 
-            // Mock Data States
+            // Data
             const [reservations, setReservations] = useState([{ id: 1, name: '王小明', phone: '0912-345-678', skill: 'USAR', time: new Date().toISOString(), status: '逾時' }]);
             const [requests, setRequests] = useState([{ id: 1, item: '發電機 5KW', qty: 2, from: 'HQ', status: '待處理', priority: '緊急' }]);
+            const [myGear, setMyGear] = useState([{ id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' }]);
             const [borrowedGear, setBorrowedGear] = useState([{ id: 'b1', name: '無線電', source: 'Logistics', status: 'In Use' }]);
 
-            useEffect(() => { lucide.createIcons(); }, [currentUser, activeTab, isMobileMenuOpen, isModalOpen, reservations, requests, lang, isLocationSharing]);
+            useEffect(() => { lucide.createIcons(); }, [activeTab, isMeshActive, currentUser, reservations, requests, myGear]);
 
-            const addToast = useCallback((title, message, type = 'success') => {
+            const addToast = (title, message, type = 'success') => {
                 const id = Date.now();
                 setToasts(prev => [...prev, { id, title, message, type }]);
                 setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
-            }, []);
-
-            const handleLocationToggle = () => {
-                if (isLocationSharing) {
-                    setIsLocationSharing(false);
-                    addToast('GPS', 'Location sharing stopped', 'info');
-                } else {
-                    setIsLocationModalOpen(true); // Ask for consent
-                }
             };
 
-            const confirmLocationSharing = () => {
-                setIsLocationSharing(true);
-                setIsLocationModalOpen(false);
-                addToast('GPS', 'Location sharing enabled', 'success');
-            };
+            const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); };
 
-            // Navigation Handlers
-            const handleQuickAction = (action) => {
-                if(action === 'map') setActiveTab('map');
-                if(action === 'scan') alert('Camera Interface Opening...');
-                if(action === 'volunteer') { setModalType('volunteer'); setIsModalOpen(true); }
-                if(action === 'logistics') { setModalType('logistics'); setIsModalOpen(true); }
-            };
+            // Handlers
+            const handleVolunteerAdd = (e) => { e.preventDefault(); setReservations(p => [...p, { id: Date.now(), name: 'New Volunteer', phone: '09xx', skill: 'General', time: new Date().toISOString(), status: '預約中' }]); addToast('Success', 'Volunteer Added'); setIsModalOpen(false); };
+            const handleLogisticsAdd = (e) => { e.preventDefault(); setRequests(p => [...p, { id: Date.now(), item: 'New Item', qty: 1, from: 'Field', status: '待處理', priority: 'Normal' }]); addToast('Success', 'Request Submitted'); setIsModalOpen(false); };
+            const handleGearReturn = (id, isDonating) => { if(confirm('Return?')) { setBorrowedGear(p => p.filter(i => i.id !== id)); addToast('Success', isDonating ? 'Returned & Donated' : 'Returned'); } };
 
             const renderContent = () => {
+                const props = { lang, onQuickAction: (action) => {
+                    if (action === 'triage') { setModalType('triage'); setIsModalOpen(true); }
+                    else if (action === 'scan') addToast('Camera', 'Scanning QR...');
+                    else if (action === 'map') setActiveTab('map');
+                    else if (action === 'volunteer') { setModalType('volunteer'); setIsModalOpen(true); }
+                    else if (action === 'logistics') { setModalType('logistics'); setIsModalOpen(true); }
+                }};
+
                 switch(activeTab) {
                     case 'dashboard': return <DashboardView stats={[
-                        { label: t.stats.manpower, val: reservations.length + 120, unit: t.stats.unitPerson, icon: 'users', color: 'bg-blue-100 text-blue-600' },
-                        { label: t.stats.requests, val: requests.length, unit: t.stats.unitCase, icon: 'package', color: 'bg-orange-100 text-orange-600' },
-                        { label: t.stats.recycle, val: '89', unit: '%', icon: 'recycle', color: 'bg-green-100 text-green-600' },
-                        { label: t.stats.shelter, val: '82', unit: '%', icon: 'home', color: 'bg-red-100 text-red-600' }
-                    ]} lang={lang} onQuickAction={handleQuickAction} />;
-                    case 'map': return <MapView mapLayers={mapLayers} toggleLayer={(k) => setMapLayers({...mapLayers, [k]: !mapLayers[k]})} isSharing={isLocationSharing} lang={lang} />;
-                    case 'resource': return <ResourceView myGear={[]} borrowedGear={borrowedGear} onReturn={(id) => setBorrowedGear(p => p.filter(i => i.id !== id))} onScan={() => {}} lang={lang} />;
-                    // Simplified View for other tabs just to show structure
-                    case 'volunteers': return <div className="p-6"><EmptyState text="Volunteer List Module" /></div>;
-                    case 'logistics': return <div className="p-6"><EmptyState text="Logistics Module" /></div>;
-                    case 'life': return <div className="p-6"><EmptyState text="Life Support Module" /></div>;
+                        { label: TRANSLATIONS[lang].stats.manpower, val: reservations.length + 120, unit: 'Ppl', icon: 'users', color: 'bg-blue-100 text-blue-600' },
+                        { label: TRANSLATIONS[lang].stats.triage, val: '12', unit: 'Case', icon: 'activity', color: 'bg-red-100 text-red-600' }, 
+                        { label: TRANSLATIONS[lang].stats.sensors, val: '2', unit: 'Alert', icon: 'radio', color: 'bg-orange-100 text-orange-600' }, 
+                        { label: TRANSLATIONS[lang].stats.recycle, val: '89', unit: '%', icon: 'recycle', color: 'bg-green-100 text-green-600' }
+                    ]} {...props} />;
+                    case 'medical': return <MedicalView lang={lang} />;
+                    case 'social': return <SocialView lang={lang} />;
+                    case 'map': return <MapView mapLayers={{hazard:true, resources:true, volunteers:true}} toggleLayer={() => {}} isSharing={isLocationSharing} lang={lang} />;
+                    case 'volunteers': return <VolunteersView data={reservations} onAdd={() => {setModalType('volunteer'); setIsModalOpen(true);}} onUpdate={(id, status) => {setReservations(p => p.map(i => i.id === id ? {...i, status} : i)); addToast('Updated', 'Status Changed');}} onDelete={(id) => setReservations(p => p.filter(i => i.id !== id))} lang={lang} />;
+                    case 'logistics': return <LogisticsView data={requests} onAdd={() => {setModalType('logistics'); setIsModalOpen(true);}} onUpdate={(id, status) => {setRequests(p => p.map(i => i.id === id ? {...i, status} : i)); addToast('Updated', 'Status Changed');}} lang={lang} />;
+                    case 'resource': return <ResourceView myGear={myGear} borrowedGear={borrowedGear} onReturn={handleGearReturn} onScan={() => addToast('Scan', 'Camera active')} lang={lang} />;
+                    case 'life': return <LifeView lang={lang} />;
                     default: return null;
                 }
             };
@@ -579,66 +486,61 @@
                 <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
                     <ToastContainer toasts={toasts} removeToast={(id) => setToasts(p => p.filter(t => t.id !== id))} />
                     
-                    {/* Mobile Header */}
-                    <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-30 flex items-center justify-between px-4">
-                        <div className="flex items-center gap-2 font-bold text-slate-800"><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>ResQ v5.3</div>
-                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2"><i data-lucide={isMobileMenuOpen ? "x" : "menu"}></i></button>
-                    </div>
-
-                    {/* Sidebar */}
-                    <nav className={`fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl transition-transform duration-300 md:translate-x-0 md:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                        <div className="p-6 hidden md:block">
-                            <div className="flex items-center gap-3 mb-1"><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div><span className="font-bold text-lg">ResQ v5.3</span></div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pl-11">Optimized UI</p>
+                    {/* Navigation */}
+                    <nav className="w-20 md:w-64 bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl">
+                        <div className="p-5 border-b border-slate-100 flex flex-col items-start gap-1">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
+                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v7.2</h1></div>
+                            </div>
+                            
+                            {/* Designer Credit & User Info (Integrated in Sidebar) */}
+                            <div className="hidden md:block mt-3 w-full">
+                                {currentUser.unit && <div className="bg-slate-50 p-2 rounded text-xs font-bold text-slate-600 mb-2 border border-slate-200"><span className="block text-[8px] text-slate-400 uppercase tracking-widest">Unit</span>{currentUser.unit}</div>}
+                                <div className="flex items-center gap-2 mt-2 pl-1">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{TRANSLATIONS[lang].designerLabel}</span>
+                                    <a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" className="text-slate-400 hover:text-blue-600 transition-colors" title="Email Designer"><i data-lucide="mail" width="12"></i></a>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex-1 px-4 space-y-1 overflow-y-auto mt-16 md:mt-0">
-                            {['dashboard', 'map', 'resource', 'volunteers', 'logistics', 'life'].map(key => (
-                                <button key={key} onClick={() => { setActiveTab(key); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                    <i data-lucide={key === 'dashboard' ? 'layout-dashboard' : key === 'map' ? 'map' : key === 'resource' ? 'recycle' : 'circle'} width="18"></i> {t.nav[key]}
+
+                        <div className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+                            {['dashboard', 'medical', 'social', 'volunteers', 'logistics', 'resource', 'life'].map(key => (
+                                <button key={key} onClick={() => setActiveTab(key)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
+                                    <i data-lucide={key === 'dashboard' ? 'layout-dashboard' : key === 'map' ? 'map' : key === 'medical' ? 'activity' : key === 'volunteers' ? 'users' : key === 'logistics' ? 'package' : key === 'social' ? 'message-circle' : key === 'resource' ? 'recycle' : 'coffee'} width="18"></i>
+                                    <span className="hidden md:inline">{TRANSLATIONS[lang].nav[key]}</span>
                                 </button>
                             ))}
                         </div>
-                        <div className="p-4 border-t border-slate-100"><button onClick={() => setCurrentUser(null)} className="w-full flex items-center gap-2 px-4 py-2 text-red-500 text-xs font-bold hover:bg-red-50 rounded-lg"><i data-lucide="log-out" width="14"></i> {t.nav.logout}</button></div>
+                        <div className="p-4 border-t border-slate-100">
+                            <button onClick={() => setCurrentUser(null)} className="w-full flex items-center gap-2 text-red-500 text-xs font-bold px-2"><i data-lucide="log-out" width="14"></i> <span className="hidden md:inline">{TRANSLATIONS[lang].nav.logout}</span></button>
+                        </div>
                     </nav>
 
-                    {/* Main Content */}
-                    <main className="flex-1 flex flex-col min-w-0 relative mt-16 md:mt-0">
+                    {/* Main */}
+                    <main className="flex-1 flex flex-col min-w-0 relative">
                         <div className="flex-1 overflow-y-auto pb-24">{renderContent()}</div>
-                        <SafetyBar onSOS={() => setIsSOSModalOpen(true)} lang={lang} isSharing={isLocationSharing} toggleSharing={handleLocationToggle} />
+                        <SafetyBar 
+                            lang={lang} 
+                            onSOS={() => alert('SOS Sent!')} 
+                            isSharing={isLocationSharing} 
+                            toggleSharing={() => { setIsLocationSharing(!isLocationSharing); addToast('GPS', isLocationSharing ? 'Tracking Stopped' : 'Tracking Enabled'); }}
+                            isMeshActive={isMeshActive}
+                            toggleMesh={() => { setIsMeshActive(!isMeshActive); addToast('Network', !isMeshActive ? 'Switched to Mesh Mode (D2D)' : 'Switched to Internet'); }}
+                        />
                     </main>
 
-                    {/* Modals */}
-                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'volunteer' ? t.actions.addVolunteer : t.actions.submitRequest}>
-                        {/* Simplified form for demo */}
-                        <div className="space-y-4">
-                            <p className="text-sm text-slate-500">Form content placeholder...</p>
-                            <button onClick={() => { setIsModalOpen(false); addToast('Success', 'Action completed'); }} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Submit</button>
+                    {/* Triage Modal */}
+                    <Modal isOpen={isModalOpen && modalType === 'triage'} onClose={() => setIsModalOpen(false)} title={TRANSLATIONS[lang].headers.triage}>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            {['red', 'yellow', 'green', 'black'].map(level => (
+                                <button key={level} onClick={() => { setIsModalOpen(false); addToast('Triage', `Patient tagged: ${level.toUpperCase()}`); }} className={`p-4 rounded-xl font-bold text-sm border-2 border-transparent hover:scale-105 transition-transform triage-${level}`}>
+                                    {TRANSLATIONS[lang].triage[level]}
+                                </button>
+                            ))}
                         </div>
+                        <p className="text-xs text-slate-400 text-center">Select patient condition based on RPM (Respiration, Perfusion, Mental Status).</p>
                     </Modal>
-
-                    {/* Location Consent Modal */}
-                    <Modal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} title={t.safety.locationConsentTitle}>
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"><i data-lucide="map-pin" width="32"></i></div>
-                            <p className="text-sm text-slate-600 mb-6 leading-relaxed">{t.safety.locationConsentDesc}</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => setIsLocationModalOpen(false)} className="py-3 bg-slate-100 text-slate-600 rounded-xl font-bold">{t.safety.cancel}</button>
-                                <button onClick={confirmLocationSharing} className="py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700">{t.safety.agree}</button>
-                            </div>
-                        </div>
-                    </Modal>
-
-                    {/* SOS Modal */}
-                    {isSOSModalOpen && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-red-900/90 backdrop-blur-md animate-in fade-in">
-                            <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-100 animate-in zoom-in">
-                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce"><i data-lucide="alert-octagon" width="40" height="40"></i></div>
-                                <h3 className="text-2xl font-black text-slate-900 mb-2">{t.safety.confirmSOS}</h3>
-                                <p className="text-sm text-slate-500 mb-6">{t.safety.sosDesc}</p>
-                                <div className="space-y-3"><button onClick={() => { alert('SOS Sent!'); setIsSOSModalOpen(false); }} className="w-full py-4 bg-red-600 text-white rounded-xl font-black text-lg shadow-lg hover:bg-red-700">{t.safety.send}</button><button onClick={() => setIsSOSModalOpen(false)} className="w-full py-3 text-slate-400 font-bold hover:text-slate-600">{t.safety.cancel}</button></div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             );
         };
