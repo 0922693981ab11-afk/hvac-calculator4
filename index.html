@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v8.4 - 穩定防護版</title>
+    <title>災害救助行動指揮系統 v9.1 - 修復運行錯誤版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- React, ReactDOM & Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Lucide Icons (Added error handling in JS) -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
@@ -52,26 +52,14 @@
             70% { box-shadow: 0 0 0 10px rgba(147, 51, 234, 0); }
             100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
         }
-
-        /* Error Boundary Style */
-        #error-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; padding: 10px; background: #ef4444; color: white; text-align: center; z-index: 9999; font-weight: bold; }
+        
+        /* Pass Status */
+        .pass-valid { border-left: 4px solid #22c55e; }
+        .pass-expired { border-left: 4px solid #ef4444; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-hidden">
-    <div id="error-overlay">系統發生錯誤，請重新整理頁面或檢查網路連線。</div>
     <div id="root"></div>
-
-    <script>
-        // Global Error Handler
-        window.onerror = function(message, source, lineno, colno, error) {
-            console.error("Global Error:", message, error);
-            const overlay = document.getElementById('error-overlay');
-            if (overlay) {
-                overlay.style.display = 'block';
-                overlay.innerText = `系統警示: ${message}`;
-            }
-        };
-    </script>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback } = React;
@@ -92,15 +80,15 @@
                     submitReg: '提交報到資訊',
                     backToLogin: '返回登入'
                 },
-                nav: { dashboard: '指揮總覽', map: '戰情地圖', medical: '緊急醫療', volunteers: '人力管理', logistics: '後勤調度', social: '社群情資', resource: '資材循環', life: '生活後勤', logout: '登出', back: '返回上一頁', home: '回到首頁' },
+                nav: { dashboard: '指揮總覽', map: '戰情地圖', medical: '緊急醫療', volunteers: '人力管理', logistics: '後勤調度', access: '車輛通行', social: '社群情資', resource: '資材循環', life: '生活後勤', logout: '登出', back: '返回上一頁', home: '回到首頁' },
                 stats: { manpower: '前線人力', requests: '待處理需求', triage: '檢傷總數', sensors: 'IoT 異常', recycle: '資材循環率', shelter: '避難負荷' },
-                headers: { alert: '官方與社群警訊', gisControl: 'GIS 圖層', quickActions: '快速行動', triage: '大量傷患檢傷 (START)', mesh: 'D2D 網狀網路', social: '社群輿情監測', borrowed: '借用中資材', myGear: '個人自攜清單', lifeSupport: '生活後勤保障', transferCommand: '指揮權轉移程序' },
-                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收', confirmAdd: '確認新增', cancel: '取消', transfer: '移交指揮權', confirmTransfer: '確認移交' },
-                form: { name: '姓名', phone: '聯絡電話', skill: '專業技能', item: '需求品項', qty: '數量', priority: '優先級', from: '需求單位', targetUnit: '接收單位', reason: '移交原因', placeholderName: '輸入全名', placeholderPhone: '09xx-xxx-xxx', placeholderSkill: '如：緊急救護 (EMT-1)', placeholderItem: '如：睡袋', placeholderFrom: '如：A區安置點' },
+                headers: { alert: '官方與社群警訊', gisControl: 'GIS 圖層', quickActions: '快速行動', triage: '大量傷患檢傷 (START)', mesh: 'D2D 網狀網路', social: '社群輿情監測', borrowed: '借用中資材', myGear: '個人自攜清單', lifeSupport: '生活後勤保障', transferCommand: '指揮權轉移程序', vehiclePass: '工程車輛通行證' },
+                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收', confirmAdd: '確認新增', cancel: '取消', transfer: '移交指揮權', confirmTransfer: '確認移交', dispatch: '派遣後送', issuePass: '核發通行證' },
+                form: { name: '姓名', phone: '聯絡電話', skill: '專業技能', item: '需求品項', qty: '數量', priority: '優先級', from: '需求單位', targetUnit: '接收單位', reason: '移交原因', plate: '車牌號碼', vehicleType: '車輛類型', zone: '授權區域', placeholderName: '輸入全名', placeholderPhone: '09xx-xxx-xxx', placeholderSkill: '如：緊急救護 (EMT-1)', placeholderItem: '如：睡袋', placeholderFrom: '如：A區安置點', placeholderPlate: 'ABC-1234' },
                 triage: { red: '第一優先 (紅)', yellow: '第二優先 (黃)', green: '第三優先 (綠)', black: '死亡 (黑)', desc: '依據呼吸、循環、意識 (RPM) 快速分類' },
                 mesh: { active: 'Mesh 網狀網路啟用', inactive: '網際網路連線中', desc: '基礎設施中斷時，透過藍牙/WiFi Direct 進行近接中繼傳輸。' },
                 safety: { locationConsentTitle: '開啟位置回報', locationConsentDesc: '為了您的安全，系統需存取 GPS。資料僅供本次任務使用。', agree: '同意並開啟', heartbeat: '安全心跳', connected: '系統連線中', location: '定位服務', locationOff: '未分享', locationOn: '即時回報中', confirmSOS: '確認發送求救訊號？', sosDesc: '將傳送精確座標與錄音至最近的救援小組與指揮中心。', cancel: '取消', send: '立即發送 SOS' },
-                status: { overdue: '逾時', checkedIn: '已報到', booking: '預約中', pending: '待處理', shipping: '運送中', arrived: '已送達', urgent: '緊急', Normal: '普通', High: '高', Urgent: '緊急' },
+                status: { overdue: '逾時', checkedIn: '已報到', booking: '預約中', pending: '待處理', shipping: '運送中', arrived: '已送達', urgent: '緊急', Normal: '普通', High: '高', Urgent: '緊急', Dispatched: '已後送', Valid: '有效', Expired: '失效' },
                 designerLabel: '設計者 吳啓仲'
             },
             'en-US': {
@@ -117,15 +105,15 @@
                     submitReg: 'Submit Registration',
                     backToLogin: 'Back to Login'
                 },
-                nav: { dashboard: 'Dashboard', map: 'Situation Map', medical: 'Medical EMS', volunteers: 'Volunteers', logistics: 'Logistics', social: 'Social Intel', resource: 'Circularity', life: 'Life Support', logout: 'Logout', back: 'Go Back', home: 'Home' },
+                nav: { dashboard: 'Dashboard', map: 'Situation Map', medical: 'Medical EMS', volunteers: 'Volunteers', logistics: 'Logistics', access: 'Access Control', social: 'Social Intel', resource: 'Circularity', life: 'Life Support', logout: 'Logout', back: 'Go Back', home: 'Home' },
                 stats: { manpower: 'Manpower', requests: 'Pending Req', triage: 'Triage Count', sensors: 'IoT Alerts', recycle: 'Recycle Rate', shelter: 'Shelter Load' },
-                headers: { alert: 'Official & Social Alerts', gisControl: 'GIS Layers', quickActions: 'Quick Actions', triage: 'Mass Casualty Triage', mesh: 'D2D Mesh Network', social: 'Social Media Monitoring', borrowed: 'Borrowed Gear', myGear: 'My Gear', lifeSupport: 'Life Support', transferCommand: 'Command Transfer Protocol' },
-                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive', confirmAdd: 'Confirm Add', cancel: 'Cancel', transfer: 'Transfer Command', confirmTransfer: 'Confirm Transfer' },
-                form: { name: 'Name', phone: 'Phone', skill: 'Skill', item: 'Item', qty: 'Qty', priority: 'Priority', from: 'From Unit', targetUnit: 'Target Unit', reason: 'Reason', placeholderName: 'Full Name', placeholderPhone: 'Phone Number', placeholderSkill: 'e.g. EMT-1', placeholderItem: 'e.g. Sleeping Bag', placeholderFrom: 'e.g. Zone A' },
+                headers: { alert: 'Official & Social Alerts', gisControl: 'GIS Layers', quickActions: 'Quick Actions', triage: 'Mass Casualty Triage', mesh: 'D2D Mesh Network', social: 'Social Media Monitoring', borrowed: 'Borrowed Gear', myGear: 'My Gear', lifeSupport: 'Life Support', transferCommand: 'Command Transfer Protocol', vehiclePass: 'Engineering Vehicle Pass' },
+                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive', confirmAdd: 'Confirm Add', cancel: 'Cancel', transfer: 'Transfer Command', confirmTransfer: 'Confirm Transfer', dispatch: 'Dispatch', issuePass: 'Issue Pass' },
+                form: { name: 'Name', phone: 'Phone', skill: 'Skill', item: 'Item', qty: 'Qty', priority: 'Priority', from: 'From Unit', targetUnit: 'Target Unit', reason: 'Reason', plate: 'Plate Number', vehicleType: 'Vehicle Type', zone: 'Zone', placeholderName: 'Full Name', placeholderPhone: 'Phone Number', placeholderSkill: 'e.g. EMT-1', placeholderItem: 'e.g. Sleeping Bag', placeholderFrom: 'e.g. Zone A', placeholderPlate: 'ABC-1234' },
                 triage: { red: 'Immediate (Red)', yellow: 'Delayed (Yellow)', green: 'Minor (Green)', black: 'Deceased (Black)', desc: 'Rapid sorting based on RPM (Respiration, Perfusion, Mental Status)' },
                 mesh: { active: 'Mesh Network Active', inactive: 'Internet Connected', desc: 'Use Bluetooth/WiFi Direct for proximity relay when infra fails.' },
                 safety: { locationConsentTitle: 'Enable Tracking', locationConsentDesc: 'GPS access required for safety. Data used for mission only.', agree: 'Agree & Enable', heartbeat: 'Heartbeat', connected: 'Connected', location: 'Location Svc', locationOff: 'Off', locationOn: 'Tracking', confirmSOS: 'Confirm SOS Signal?', sosDesc: 'Transmitting coords & audio to Rescue Team.', cancel: 'Cancel', send: 'Send SOS Now' },
-                status: { overdue: 'Overdue', checkedIn: 'Checked-In', booking: 'Booking', pending: 'Pending', shipping: 'Shipping', arrived: 'Arrived', urgent: 'Urgent', Normal: 'Normal', High: 'High', Urgent: 'Urgent' },
+                status: { overdue: 'Overdue', checkedIn: 'Checked-In', booking: 'Booking', pending: 'Pending', shipping: 'Shipping', arrived: 'Arrived', urgent: 'Urgent', Normal: 'Normal', High: 'High', Urgent: 'Urgent', Dispatched: 'Dispatched', Valid: 'Valid', Expired: 'Expired' },
                 designerLabel: 'Designer: Wu Qi-Zhong'
             }
         };
@@ -145,6 +133,13 @@
             '花蓮縣災害應變中心'
         ];
 
+        const SCENARIOS = [
+            '花蓮 0403 地震 (Hualien Earthquake)',
+            '八八水災 (Flood)',
+            '土石流警戒 (Landslide)',
+            '大規模停電 (Blackout)'
+        ];
+
         const SOCIAL_FEED = [
             { id: 1, source: 'Facebook', user: '民眾A', content: '體育館後方好像有圍牆倒塌，壓到車子！', time: '10:55', status: '待查證', type: 'risk' },
             { id: 2, source: 'Line群組', user: '里長B', content: 'C區水管破裂，需要沙包支援。', time: '10:50', status: '已證實', type: 'logistics' },
@@ -154,17 +149,32 @@
             { id: 1, type: 'InSAR', location: '山腳斷層監測站', value: '位移 2.5cm', status: 'Warning', desc: '地層變位異常' },
             { id: 2, type: 'WaterLevel', location: '中游觀測井', value: '水位 85%', status: 'Normal', desc: '水位警戒線下' }
         ];
+
+        // ADDED MISSING DATA HERE
         const TRIAGE_DATA = [
             { id: 1, code: 'T-001', level: 'red', condition: '大量出血, 意識不清', location: 'Zone A', time: '11:00' },
             { id: 2, code: 'T-002', level: 'yellow', condition: '腿部骨折, 意識清楚', location: 'Zone A', time: '11:05' },
             { id: 3, code: 'T-003', level: 'green', condition: '擦傷', location: 'Zone B', time: '11:10' }
         ];
+        
         const LIFE_SUPPORT_FACILITIES = [
             { id: 'f1', name: 'A區熱食站', type: 'food', status: '供餐中', capacity: '50 left', location: 'Gym Entrance' },
             { id: 'f2', name: 'B區淋浴間', type: 'shower', status: '排隊中', capacity: 'Wait 15m', location: 'North Field' },
             { id: 'f3', name: '志工休息帳', type: 'sleep', status: '額滿', capacity: 'Full', location: 'Campus 2' },
             { id: 'f4', name: '行動充電站', type: 'power', status: '可用', capacity: '80%', location: 'HQ Side' },
         ];
+
+        // --- Hooks: Persistent State ---
+        const useStickyState = (defaultValue, key) => {
+            const [value, setValue] = useState(() => {
+                const stickyValue = window.localStorage.getItem(key);
+                return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
+            });
+            useEffect(() => {
+                window.localStorage.setItem(key, JSON.stringify(value));
+            }, [key, value]);
+            return [value, setValue];
+        };
 
         // --- Components ---
         const ToastContainer = ({ toasts, removeToast }) => (
@@ -211,7 +221,6 @@
 
         const StatusBadge = ({ status, lang }) => {
             const t = TRANSLATIONS[lang].status;
-            // Enhanced mapping to include priorities
             const statusMap = { 
                 '逾時': t.overdue, 'Overdue': t.overdue,
                 '已報到': t.checkedIn, 'Checked-In': t.checkedIn,
@@ -220,7 +229,8 @@
                 '運送中': t.shipping, 'Shipping': t.shipping,
                 '已送達': t.arrived, 'Arrived': t.arrived,
                 '緊急': t.urgent, 'Urgent': t.urgent,
-                'Normal': t.Normal || 'Normal', 'High': t.High || 'High' // Fallbacks
+                '已後送': t.Dispatched,
+                '有效': t.Valid, '失效': t.Expired
             };
             const displayStatus = statusMap[status] || status;
             
@@ -229,7 +239,9 @@
                 [t.checkedIn]: 'bg-green-50 text-green-600 border-green-100', 
                 [t.booking]: 'bg-blue-50 text-blue-600 border-blue-100', 
                 [t.urgent]: 'bg-red-600 text-white border-red-600',
-                [t.High]: 'bg-orange-100 text-orange-700 border-orange-200' 
+                [t.Dispatched]: 'bg-purple-100 text-purple-700 border-purple-200',
+                [t.Valid]: 'bg-green-100 text-green-700 border-green-200',
+                [t.Expired]: 'bg-slate-100 text-slate-500 border-slate-200'
             };
             return <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${colors[displayStatus] || 'bg-slate-50 text-slate-500 border-slate-100'}`}>{displayStatus}</span>;
         };
@@ -241,31 +253,27 @@
             </div>
         );
 
-        // --- Login / Registration View ---
+        // --- Login View ---
         const LoginView = ({ onLogin, lang, setLang }) => {
             const t = TRANSLATIONS[lang];
             const [mode, setMode] = useState('login'); 
             const [regData, setRegData] = useState({ unit: '', name: '', id: '', role: 'vol' });
 
-            // Safe icon loading
             useEffect(() => { 
-                if (window.lucide) {
-                    try { window.lucide.createIcons(); } catch(e) { console.warn("Icon load error", e); }
-                }
+                if(window.lucide) try { window.lucide.createIcons(); } catch(e){}
             }, []);
 
             const handleRegister = (e) => {
                 e.preventDefault();
                 const roleConfig = ROLES_OPTIONS.find(r => r.id === regData.role) || ROLES_OPTIONS[3];
-                const userData = {
+                onLogin({
                     id: regData.role,
                     name: regData.name,
                     unit: regData.unit,
                     idNumber: regData.id,
                     icon: roleConfig.icon,
                     color: roleConfig.color
-                };
-                onLogin(userData);
+                });
             };
 
             return (
@@ -274,10 +282,9 @@
                     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
-                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v8.4</h1>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v9.1</h1>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
-
                         {mode === 'login' ? (
                             <>
                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{t.login.quickLogin}</h3>
@@ -318,12 +325,9 @@
                                 <button type="submit" className="w-full mt-6 py-3 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">{t.login.submitReg}</button>
                             </form>
                         )}
-
                         <div className="mt-8 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold border-t border-slate-100 pt-4">
                             <span>{t.designerLabel}</span>
-                            <a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" title="聯繫設計者" className="hover:text-blue-500 transition-colors">
-                                <i data-lucide="mail" width="12"></i>
-                            </a>
+                            <a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" title="聯繫設計者" className="hover:text-blue-500 transition-colors"><i data-lucide="mail" width="12"></i></a>
                         </div>
                     </div>
                 </div>
@@ -331,19 +335,24 @@
         };
 
         // --- Sub-Views ---
-        
-        const DashboardView = ({ stats, lang, onQuickAction, isIC, onTransfer }) => {
+
+        const DashboardView = ({ stats, lang, onQuickAction, isIC, onTransfer, onScenarioChange, currentScenario }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
                         <div>
                             <h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2>
-                            <p className="text-sm text-slate-500 font-medium mt-1">ResQ v8.4 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-sm text-slate-500 font-medium">Scenario:</span>
+                                <select value={currentScenario} onChange={(e) => onScenarioChange(e.target.value)} className="bg-white border border-slate-300 text-xs font-bold rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500">
+                                    {SCENARIOS.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span>
+                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
-                            {/* Command Transfer Button for IC */}
                             {isIC && (
                                 <button onClick={onTransfer} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 border border-slate-700">
                                     <i data-lucide="arrow-right-left" width="14"></i> {t.actions.transfer}
@@ -390,19 +399,40 @@
             </div>
         );
 
-        const MedicalView = ({ lang }) => {
+        const MedicalView = ({ lang, data, onUpdate }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
-                    <PageHeader title={t.nav.medical} icon="activity" color="text-red-600" btnText={t.actions.triage} onBtnClick={() => {}} />
+                    <PageHeader title={t.nav.medical} icon="activity" color="text-red-600" />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="px-6 py-4">ID</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Condition</th><th className="px-6 py-4">Loc</th></tr></thead><tbody className="divide-y divide-slate-100">{TRIAGE_DATA.map(pt => (<tr key={pt.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-mono font-bold text-slate-700">{pt.code}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold triage-${pt.level}`}>{t.triage[pt.level]}</span></td><td className="px-6 py-4 text-slate-600">{pt.condition}</td><td className="px-6 py-4 text-slate-500 text-xs">{pt.location}</td></tr>))}</tbody></table>
+                            <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="px-6 py-4">ID</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Condition</th><th className="px-6 py-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{data.map(pt => (<tr key={pt.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-mono font-bold text-slate-700">{pt.code}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold triage-${pt.level}`}>{t.triage[pt.level]}</span></td><td className="px-6 py-4 text-slate-600">{pt.condition}</td><td className="px-6 py-4 text-right"><button onClick={() => onUpdate(pt.id, 'Dispatched')} className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold hover:bg-purple-200 border border-purple-200">{t.actions.dispatch}</button></td></tr>))}</tbody></table>
                         </div>
                         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 h-fit"><h3 className="text-sm font-bold text-slate-500 uppercase mb-4">Hospital Capacity</h3><div className="space-y-4"><div><div className="flex justify-between text-sm mb-1"><span className="font-bold text-slate-700">Tzu Chi Hospital</span><span className="text-red-500 font-bold">Full</span></div><div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{width: '95%'}}></div></div></div></div></div>
                     </div>
                 </div>
             );
+        };
+
+        const AccessView = ({ data, onAdd, lang }) => {
+             const t = TRANSLATIONS[lang];
+             return (
+                <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
+                    <PageHeader title={t.headers.vehiclePass} icon="truck" color="text-blue-600" btnText={t.actions.issuePass} onBtnClick={onAdd} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.length === 0 ? <div className="col-span-full"><EmptyState text="No Passes Issued" /></div> : data.map(pass => (
+                            <div key={pass.id} className={`bg-white p-5 rounded-xl border border-slate-200 shadow-sm ${pass.status === 'Valid' ? 'pass-valid' : 'pass-expired'}`}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="text-lg font-black text-slate-800">{pass.plate}</h4>
+                                    <StatusBadge status={pass.status} lang={lang} />
+                                </div>
+                                <p className="text-sm text-slate-500">{pass.type}</p>
+                                <p className="text-xs font-mono text-slate-400 mt-2 bg-slate-50 p-1 rounded inline-block">{pass.zone}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             );
         };
 
         const VolunteersView = ({ data, onAdd, onUpdate, onDelete, lang }) => {
@@ -467,30 +497,31 @@
         // --- Main App Logic ---
         const App = () => {
             const [lang, setLang] = useState('zh-TW');
+            const t = TRANSLATIONS[lang];
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [history, setHistory] = useState(['dashboard']); // History Stack
-            const [currentUser, setCurrentUser] = useState(null);
+            const [history, setHistory] = useState(['dashboard']);
             
+            // Persistent State (New)
+            const [currentUser, setCurrentUser] = useStickyState(null, 'resq_user');
+            const [commander, setCommander] = useStickyState('林局長', 'resq_commander');
+            const [currentScenario, setCurrentScenario] = useStickyState(SCENARIOS[0], 'resq_scenario');
+            
+            const [reservations, setReservations] = useStickyState([{ id: 1, name: '王小明', phone: '0912-345-678', skill: 'USAR', time: new Date().toISOString(), status: '逾時' }], 'resq_volunteers');
+            const [requests, setRequests] = useStickyState([{ id: 1, item: '發電機 5KW', qty: 2, from: 'HQ', status: '待處理', priority: '緊急' }], 'resq_logistics');
+            const [vehiclePasses, setVehiclePasses] = useStickyState([], 'resq_passes');
+            const [triageData, setTriageData] = useStickyState(TRIAGE_DATA, 'resq_triage');
+
             const [isMeshActive, setIsMeshActive] = useState(false);
             const [isLocationSharing, setIsLocationSharing] = useState(false);
             const [toasts, setToasts] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalType, setModalType] = useState(null);
 
-            // Data
-            const [reservations, setReservations] = useState([{ id: 1, name: '王小明', phone: '0912-345-678', skill: 'USAR', time: new Date().toISOString(), status: '逾時' }]);
-            const [requests, setRequests] = useState([{ id: 1, item: '發電機 5KW', qty: 2, from: 'HQ', status: '待處理', priority: '緊急' }]);
-            const [myGear, setMyGear] = useState([{ id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' }]);
+            // Mock other data not needing persistence for demo
+            const [myGear] = useState([{ id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' }]);
             const [borrowedGear, setBorrowedGear] = useState([{ id: 'b1', name: '無線電', source: 'Logistics', status: 'In Use' }]);
-            
-            // Command Transfer State
-            const [commander, setCommander] = useState('林局長');
 
-            useEffect(() => { 
-                if (window.lucide) {
-                   try { window.lucide.createIcons(); } catch(e) {}
-                }
-            }, [activeTab, isMeshActive, currentUser, reservations, requests, myGear]);
+            useEffect(() => { if(window.lucide) try { window.lucide.createIcons(); } catch(e){} }, [activeTab, isMeshActive, currentUser, reservations, requests, vehiclePasses]);
 
             const addToast = (title, message, type = 'success') => {
                 const id = Date.now();
@@ -528,78 +559,53 @@
 
             // Handlers
             const handleVolunteerAdd = (e) => { 
-                try {
-                    e.preventDefault(); 
-                    const fd = new FormData(e.target);
-                    setReservations(p => [...p, { 
-                        id: Date.now(), 
-                        name: fd.get('name'), 
-                        phone: fd.get('phone'), 
-                        skill: fd.get('skill'), 
-                        time: new Date().toISOString(), 
-                        status: '預約中' 
-                    }]); 
-                    addToast('Success', 'Volunteer Added'); 
-                    setIsModalOpen(false); 
-                } catch (err) {
-                    console.error("Add Vol Error", err);
-                    addToast('Error', 'Failed to add volunteer', 'error');
-                }
+                e.preventDefault(); const fd = new FormData(e.target);
+                setReservations(p => [...p, { id: Date.now(), name: fd.get('name'), phone: fd.get('phone'), skill: fd.get('skill'), time: new Date().toISOString(), status: '預約中' }]); 
+                addToast('Success', 'Volunteer Added'); setIsModalOpen(false); 
             };
-
             const handleLogisticsAdd = (e) => { 
-                try {
-                    e.preventDefault(); 
-                    const fd = new FormData(e.target);
-                    setRequests(p => [...p, { 
-                        id: Date.now(), 
-                        item: fd.get('item'), 
-                        qty: fd.get('qty'), 
-                        from: fd.get('from'), 
-                        status: '待處理', 
-                        priority: fd.get('priority') 
-                    }]); 
-                    addToast('Success', 'Request Submitted'); 
-                    setIsModalOpen(false);
-                } catch (err) {
-                    console.error("Add Log Error", err);
-                     addToast('Error', 'Failed to add request', 'error');
-                }
+                e.preventDefault(); const fd = new FormData(e.target);
+                setRequests(p => [...p, { id: Date.now(), item: fd.get('item'), qty: fd.get('qty'), from: fd.get('from'), status: '待處理', priority: fd.get('priority') }]); 
+                addToast('Success', 'Request Submitted'); setIsModalOpen(false); 
             };
-
-            const handleGearReturn = (id, isDonating) => { if(confirm('Return?')) { setBorrowedGear(p => p.filter(i => i.id !== id)); addToast('Success', isDonating ? 'Returned & Donated' : 'Returned'); } };
-
-            // Command Transfer Handler
+            const handlePassAdd = (e) => {
+                e.preventDefault(); const fd = new FormData(e.target);
+                setVehiclePasses(p => [...p, { id: Date.now(), plate: fd.get('plate'), type: fd.get('type'), zone: fd.get('zone'), status: 'Valid' }]);
+                addToast('Success', 'Pass Issued'); setIsModalOpen(false);
+            };
             const handleTransfer = (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                const target = fd.get('target');
-                setCommander(target); // Update commander name
-                addToast('System', `指揮權已移交至: ${target}`, 'info');
-                setIsModalOpen(false);
+                e.preventDefault(); const fd = new FormData(e.target);
+                setCommander(fd.get('target')); 
+                addToast('System', `指揮權已移交至: ${fd.get('target')}`, 'info'); setIsModalOpen(false);
+            };
+            const handleTriageUpdate = (id, status) => {
+                // In a real app this would update the specific patient status
+                addToast('Medical', 'Patient Dispatch Initiated', 'info');
             };
 
             const renderContent = () => {
                 const props = { lang, onQuickAction: (action) => {
-                    if (action === 'triage') { setModalType('triage'); setIsModalOpen(true); }
+                    if (action === 'triage') { setActiveTab('medical'); }
                     else if (action === 'scan') addToast('Camera', 'Scanning QR...');
                     else if (action === 'map') navigateTo('map');
                     else if (action === 'volunteer') { setModalType('volunteer'); setIsModalOpen(true); }
                     else if (action === 'logistics') { setModalType('logistics'); setIsModalOpen(true); }
+                    else if (action === 'pass') { setModalType('pass'); setIsModalOpen(true); }
                 }};
 
                 switch(activeTab) {
                     case 'dashboard': return <DashboardView stats={[
                         { label: TRANSLATIONS[lang].stats.manpower, val: reservations.length + 120, unit: 'Ppl', icon: 'users', color: 'bg-blue-100 text-blue-600' },
-                        { label: TRANSLATIONS[lang].stats.triage, val: '12', unit: 'Case', icon: 'activity', color: 'bg-red-100 text-red-600' }, 
+                        { label: TRANSLATIONS[lang].stats.triage, val: triageData.length, unit: 'Case', icon: 'activity', color: 'bg-red-100 text-red-600' }, 
                         { label: TRANSLATIONS[lang].stats.sensors, val: '2', unit: 'Alert', icon: 'radio', color: 'bg-orange-100 text-orange-600' }, 
                         { label: TRANSLATIONS[lang].stats.recycle, val: '89', unit: '%', icon: 'recycle', color: 'bg-green-100 text-green-600' }
-                    ]} {...props} isIC={currentUser?.id === 'ic'} onTransfer={() => {setModalType('transfer'); setIsModalOpen(true);}} />;
-                    case 'medical': return <MedicalView lang={lang} />;
+                    ]} {...props} isIC={currentUser?.id === 'ic'} onTransfer={() => {setModalType('transfer'); setIsModalOpen(true);}} onScenarioChange={setCurrentScenario} currentScenario={currentScenario} />;
+                    case 'medical': return <MedicalView lang={lang} data={triageData} onUpdate={handleTriageUpdate} />;
                     case 'social': return <SocialView lang={lang} />;
                     case 'map': return <MapView mapLayers={{hazard:true, resources:true, volunteers:true}} toggleLayer={() => {}} isSharing={isLocationSharing} lang={lang} />;
-                    case 'volunteers': return <VolunteersView data={reservations} onAdd={() => {setModalType('volunteer'); setIsModalOpen(true);}} onUpdate={(id, status) => {setReservations(p => p.map(i => i.id === id ? {...i, status} : i)); addToast('Updated', 'Status Changed');}} onDelete={(id) => setReservations(p => p.filter(i => i.id !== id))} lang={lang} />;
-                    case 'logistics': return <LogisticsView data={requests} onAdd={() => {setModalType('logistics'); setIsModalOpen(true);}} onUpdate={(id, status) => {setRequests(p => p.map(i => i.id === id ? {...i, status} : i)); addToast('Updated', 'Status Changed');}} lang={lang} />;
+                    case 'volunteers': return <VolunteersView data={reservations} onAdd={() => {setModalType('volunteer'); setIsModalOpen(true);}} onUpdate={(id, status) => setReservations(p => p.map(i => i.id === id ? {...i, status} : i))} onDelete={(id) => setReservations(p => p.filter(i => i.id !== id))} lang={lang} />;
+                    case 'logistics': return <LogisticsView data={requests} onAdd={() => {setModalType('logistics'); setIsModalOpen(true);}} onUpdate={(id, status) => setRequests(p => p.map(i => i.id === id ? {...i, status} : i))} lang={lang} />;
+                    case 'access': return <AccessView data={vehiclePasses} onAdd={() => {setModalType('pass'); setIsModalOpen(true);}} lang={lang} />;
                     case 'resource': return <ResourceView myGear={myGear} borrowedGear={borrowedGear} onReturn={handleGearReturn} onScan={() => addToast('Scan', 'Camera active')} lang={lang} />;
                     case 'life': return <LifeView lang={lang} />;
                     default: return null;
@@ -615,57 +621,31 @@
                     {/* Mobile Header */}
                     <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4">
                         <div className="flex items-center gap-2">
-                             {history.length > 1 && (
-                                <button onClick={goBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-600">
-                                    <i data-lucide="arrow-left" width="20"></i>
-                                </button>
-                            )}
-                            <button onClick={goHome} className="flex items-center gap-2 font-bold text-slate-800">
-                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                                ResQ v8.4
-                            </button>
+                             {history.length > 1 && <button onClick={goBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-600"><i data-lucide="arrow-left" width="20"></i></button>}
+                            <button onClick={goHome} className="flex items-center gap-2 font-bold text-slate-800"><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>ResQ v9.1</button>
                         </div>
-                        {/* Mobile Home Button */}
-                        <div className="flex items-center gap-2">
-                             <button onClick={goHome} className="p-2 rounded-full hover:bg-slate-100 text-slate-600">
-                                <i data-lucide="home" width="20"></i>
-                            </button>
-                        </div>
+                        <div className="flex items-center gap-2"><button onClick={goHome} className="p-2 rounded-full hover:bg-slate-100 text-slate-600"><i data-lucide="home" width="20"></i></button></div>
                     </div>
 
                     {/* Navigation */}
                     <nav className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col z-20 shadow-xl">
                         <div className="p-5 border-b border-slate-100 flex flex-col items-start gap-1">
-                            <div className="flex items-center gap-3 cursor-pointer" onClick={goHome} title={TRANSLATIONS[lang].nav.home}>
-                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v8.4</h1></div>
-                            </div>
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={goHome} title={TRANSLATIONS[lang].nav.home}><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div><div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v9.1</h1></div></div>
                             <div className="hidden md:block mt-3 w-full">
                                 {currentUser.unit && <div className="bg-slate-50 p-2 rounded text-xs font-bold text-slate-600 mb-2 border border-slate-200"><span className="block text-[8px] text-slate-400 uppercase tracking-widest">Unit</span>{currentUser.unit}</div>}
                                 {currentUser.id === 'ic' && <div className="bg-red-50 p-2 rounded text-xs font-bold text-red-600 mb-2 border border-red-200"><span className="block text-[8px] text-red-400 uppercase tracking-widest">Commander</span>{commander}</div>}
-                                <div className="flex items-center gap-2 mt-2 pl-1">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{TRANSLATIONS[lang].designerLabel}</span>
-                                    <a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" className="text-slate-400 hover:text-blue-600 transition-colors" title="Email Designer"><i data-lucide="mail" width="12"></i></a>
-                                </div>
+                                <div className="flex items-center gap-2 mt-2 pl-1"><span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{TRANSLATIONS[lang].designerLabel}</span><a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" className="text-slate-400 hover:text-blue-600 transition-colors" title="Email Designer"><i data-lucide="mail" width="12"></i></a></div>
                             </div>
                         </div>
 
                         <div className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-                            <button onClick={goBack} disabled={history.length <= 1} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm mb-2 ${history.length <= 1 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 border border-slate-100'}`}>
-                                <i data-lucide="arrow-left" width="18"></i>
-                                <span className="hidden md:inline">{TRANSLATIONS[lang].nav.back}</span>
-                            </button>
+                            <button onClick={goBack} disabled={history.length <= 1} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm mb-2 ${history.length <= 1 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 border border-slate-100'}`}><i data-lucide="arrow-left" width="18"></i><span className="hidden md:inline">{TRANSLATIONS[lang].nav.back}</span></button>
                             <div className="border-b border-slate-100 mb-2"></div>
-                            {['dashboard', 'medical', 'social', 'volunteers', 'logistics', 'resource', 'life'].map(key => (
-                                <button key={key} onClick={() => navigateTo(key)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                    <i data-lucide={key === 'dashboard' ? 'layout-dashboard' : key === 'map' ? 'map' : key === 'medical' ? 'activity' : key === 'volunteers' ? 'users' : key === 'logistics' ? 'package' : key === 'social' ? 'message-circle' : key === 'resource' ? 'recycle' : 'coffee'} width="18"></i>
-                                    <span className="hidden md:inline">{TRANSLATIONS[lang].nav[key]}</span>
-                                </button>
+                            {['dashboard', 'map', 'medical', 'volunteers', 'logistics', 'access', 'social', 'resource', 'life'].map(key => (
+                                <button key={key} onClick={() => navigateTo(key)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide={key === 'dashboard' ? 'layout-dashboard' : key === 'map' ? 'map' : key === 'medical' ? 'activity' : key === 'volunteers' ? 'users' : key === 'logistics' ? 'package' : key === 'access' ? 'truck' : key === 'social' ? 'message-circle' : key === 'resource' ? 'recycle' : 'coffee'} width="18"></i><span className="hidden md:inline">{TRANSLATIONS[lang].nav[key]}</span></button>
                             ))}
                         </div>
-                        <div className="p-4 border-t border-slate-100">
-                            <button onClick={handleLogout} className="w-full flex items-center gap-2 text-red-500 text-xs font-bold px-2"><i data-lucide="log-out" width="14"></i> <span className="hidden md:inline">{TRANSLATIONS[lang].nav.logout}</span></button>
-                        </div>
+                        <div className="p-4 border-t border-slate-100"><button onClick={handleLogout} className="w-full flex items-center gap-2 text-red-500 text-xs font-bold px-2"><i data-lucide="log-out" width="14"></i> <span className="hidden md:inline">{TRANSLATIONS[lang].nav.logout}</span></button></div>
                     </nav>
 
                     {/* Main */}
@@ -673,14 +653,8 @@
                         <div className="flex-1 overflow-y-auto pb-24">
                             {history.length > 1 && (
                                 <div className="px-6 pt-6 pb-0 flex gap-2">
-                                    <button onClick={goBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm">
-                                        <i data-lucide="arrow-left" width="16"></i>
-                                        {TRANSLATIONS[lang].nav.back}
-                                    </button>
-                                     <button onClick={goHome} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm border-l border-slate-300 pl-2 ml-2">
-                                        <i data-lucide="home" width="16"></i>
-                                        {TRANSLATIONS[lang].nav.home}
-                                    </button>
+                                    <button onClick={goBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm"><i data-lucide="arrow-left" width="16"></i>{TRANSLATIONS[lang].nav.back}</button>
+                                     <button onClick={goHome} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm border-l border-slate-300 pl-2 ml-2"><i data-lucide="home" width="16"></i>{TRANSLATIONS[lang].nav.home}</button>
                                 </div>
                             )}
                             {renderContent()}
@@ -689,27 +663,21 @@
                     </main>
 
                     {/* Modal */}
-                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'volunteer' ? TRANSLATIONS[lang].actions.addVolunteer : modalType === 'triage' ? TRANSLATIONS[lang].headers.triage : modalType === 'transfer' ? TRANSLATIONS[lang].headers.transferCommand : TRANSLATIONS[lang].actions.submitRequest}>
+                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'pass' ? TRANSLATIONS[lang].headers.vehiclePass : modalType === 'volunteer' ? TRANSLATIONS[lang].actions.addVolunteer : modalType === 'triage' ? TRANSLATIONS[lang].headers.triage : modalType === 'transfer' ? TRANSLATIONS[lang].headers.transferCommand : TRANSLATIONS[lang].actions.submitRequest}>
                         {modalType === 'triage' ? (
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                {['red', 'yellow', 'green', 'black'].map(level => (
-                                    <button key={level} onClick={() => { setIsModalOpen(false); addToast('Triage', `Patient tagged: ${level.toUpperCase()}`); }} className={`p-4 rounded-xl font-bold text-sm border-2 border-transparent hover:scale-105 transition-transform triage-${level}`}>
-                                        {TRANSLATIONS[lang].triage[level]}
-                                    </button>
-                                ))}
-                            </div>
+                            <div className="grid grid-cols-2 gap-3 mb-4">{['red', 'yellow', 'green', 'black'].map(level => (<button key={level} onClick={() => { setIsModalOpen(false); addToast('Triage', `Patient tagged: ${level.toUpperCase()}`); }} className={`p-4 rounded-xl font-bold text-sm border-2 border-transparent hover:scale-105 transition-transform triage-${level}`}>{TRANSLATIONS[lang].triage[level]}</button>))}</div>
                         ) : modalType === 'transfer' ? (
                             <form key="transfer" onSubmit={handleTransfer} className="space-y-4">
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.targetUnit}</label>
-                                    <select name="target" className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                        {TRANSFER_TARGETS.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </div>
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.targetUnit}</label><select name="target" className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">{TRANSFER_TARGETS.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.reason}</label><input required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. 災情升級" /></div>
-                                <div className="pt-4 flex justify-end gap-3">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">{TRANSLATIONS[lang].actions.cancel}</button>
-                                    <button type="submit" className="px-6 py-2 bg-red-600 text-white font-bold text-sm rounded-lg shadow-md hover:bg-red-700 transition-colors">{TRANSLATIONS[lang].actions.confirmTransfer}</button>
-                                </div>
+                                <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">{TRANSLATIONS[lang].actions.cancel}</button><button type="submit" className="px-6 py-2 bg-red-600 text-white font-bold text-sm rounded-lg shadow-md hover:bg-red-700 transition-colors">{TRANSLATIONS[lang].actions.confirmTransfer}</button></div>
+                            </form>
+                        ) : modalType === 'pass' ? (
+                            <form key="pass" onSubmit={handlePassAdd} className="space-y-4">
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.plate}</label><input name="plate" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder={TRANSLATIONS[lang].form.placeholderPlate} /></div>
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.vehicleType}</label><input name="type" required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Crane (30T)" /></div>
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.zone}</label><select name="zone" className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"><option value="Red Zone">Red Zone (Core)</option><option value="Yellow Zone">Yellow Zone (Support)</option><option value="Green Zone">Green Zone (Logistics)</option></select></div>
+                                <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">{TRANSLATIONS[lang].actions.cancel}</button><button type="submit" className="px-6 py-2 bg-blue-600 text-white font-bold text-sm rounded-lg shadow-md hover:bg-blue-700 transition-colors">{TRANSLATIONS[lang].actions.issuePass}</button></div>
                             </form>
                         ) : (
                             <form key={modalType} onSubmit={modalType === 'volunteer' ? handleVolunteerAdd : handleLogisticsAdd} className="space-y-4">
