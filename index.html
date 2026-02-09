@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v8.1 - 功能修復版</title>
+    <title>災害救助行動指揮系統 v8.2 - 指揮權轉移版</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -78,9 +78,9 @@
                 },
                 nav: { dashboard: '指揮總覽', map: '戰情地圖', medical: '緊急醫療', volunteers: '人力管理', logistics: '後勤調度', social: '社群情資', resource: '資材循環', life: '生活後勤', logout: '登出', back: '返回上一頁' },
                 stats: { manpower: '前線人力', requests: '待處理需求', triage: '檢傷總數', sensors: 'IoT 異常', recycle: '資材循環率', shelter: '避難負荷' },
-                headers: { alert: '官方與社群警訊', gisControl: 'GIS 圖層', quickActions: '快速行動', triage: '大量傷患檢傷 (START)', mesh: 'D2D 網狀網路', social: '社群輿情監測', borrowed: '借用中資材', myGear: '個人自攜清單', lifeSupport: '生活後勤保障' },
-                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收', confirmAdd: '確認新增', cancel: '取消' },
-                form: { name: '姓名', phone: '聯絡電話', skill: '專業技能', item: '需求品項', qty: '數量', priority: '優先級', from: '需求單位', placeholderName: '輸入全名', placeholderPhone: '09xx-xxx-xxx', placeholderSkill: '如：緊急救護 (EMT-1)', placeholderItem: '如：睡袋', placeholderFrom: '如：A區安置點' },
+                headers: { alert: '官方與社群警訊', gisControl: 'GIS 圖層', quickActions: '快速行動', triage: '大量傷患檢傷 (START)', mesh: 'D2D 網狀網路', social: '社群輿情監測', borrowed: '借用中資材', myGear: '個人自攜清單', lifeSupport: '生活後勤保障', transferCommand: '指揮權轉移程序' },
+                actions: { scan: '掃碼', addVolunteer: '登錄志工', submitRequest: '提交需求', triage: '檢傷登錄', meshToggle: '切換通訊模式', verify: '查證', ignore: '忽略', return: '歸還', donate: '捐贈', sign: '簽到', approve: '核准', receive: '簽收', confirmAdd: '確認新增', cancel: '取消', transfer: '移交指揮權', confirmTransfer: '確認移交' },
+                form: { name: '姓名', phone: '聯絡電話', skill: '專業技能', item: '需求品項', qty: '數量', priority: '優先級', from: '需求單位', targetUnit: '接收單位', reason: '移交原因', placeholderName: '輸入全名', placeholderPhone: '09xx-xxx-xxx', placeholderSkill: '如：緊急救護 (EMT-1)', placeholderItem: '如：睡袋', placeholderFrom: '如：A區安置點' },
                 triage: { red: '第一優先 (紅)', yellow: '第二優先 (黃)', green: '第三優先 (綠)', black: '死亡 (黑)', desc: '依據呼吸、循環、意識 (RPM) 快速分類' },
                 mesh: { active: 'Mesh 網狀網路啟用', inactive: '網際網路連線中', desc: '基礎設施中斷時，透過藍牙/WiFi Direct 進行近接中繼傳輸。' },
                 safety: { locationConsentTitle: '開啟位置回報', locationConsentDesc: '為了您的安全，系統需存取 GPS。資料僅供本次任務使用。', agree: '同意並開啟', heartbeat: '安全心跳', connected: '系統連線中', location: '定位服務', locationOff: '未分享', locationOn: '即時回報中', confirmSOS: '確認發送求救訊號？', sosDesc: '將傳送精確座標與錄音至最近的救援小組與指揮中心。', cancel: '取消', send: '立即發送 SOS' },
@@ -103,9 +103,9 @@
                 },
                 nav: { dashboard: 'Dashboard', map: 'Situation Map', medical: 'Medical EMS', volunteers: 'Volunteers', logistics: 'Logistics', social: 'Social Intel', resource: 'Circularity', life: 'Life Support', logout: 'Logout', back: 'Go Back' },
                 stats: { manpower: 'Manpower', requests: 'Pending Req', triage: 'Triage Count', sensors: 'IoT Alerts', recycle: 'Recycle Rate', shelter: 'Shelter Load' },
-                headers: { alert: 'Official & Social Alerts', gisControl: 'GIS Layers', quickActions: 'Quick Actions', triage: 'Mass Casualty Triage', mesh: 'D2D Mesh Network', social: 'Social Media Monitoring', borrowed: 'Borrowed Gear', myGear: 'My Gear', lifeSupport: 'Life Support' },
-                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive', confirmAdd: 'Confirm Add', cancel: 'Cancel' },
-                form: { name: 'Name', phone: 'Phone', skill: 'Skill', item: 'Item', qty: 'Qty', priority: 'Priority', from: 'From Unit', placeholderName: 'Full Name', placeholderPhone: 'Phone Number', placeholderSkill: 'e.g. EMT-1', placeholderItem: 'e.g. Sleeping Bag', placeholderFrom: 'e.g. Zone A' },
+                headers: { alert: 'Official & Social Alerts', gisControl: 'GIS Layers', quickActions: 'Quick Actions', triage: 'Mass Casualty Triage', mesh: 'D2D Mesh Network', social: 'Social Media Monitoring', borrowed: 'Borrowed Gear', myGear: 'My Gear', lifeSupport: 'Life Support', transferCommand: 'Command Transfer Protocol' },
+                actions: { scan: 'Scan', addVolunteer: 'Add Volunteer', submitRequest: 'Request', triage: 'Log Triage', meshToggle: 'Toggle Comms', verify: 'Verify', ignore: 'Ignore', return: 'Return', donate: 'Donate', sign: 'Check-In', approve: 'Approve', receive: 'Receive', confirmAdd: 'Confirm Add', cancel: 'Cancel', transfer: 'Transfer Command', confirmTransfer: 'Confirm Transfer' },
+                form: { name: 'Name', phone: 'Phone', skill: 'Skill', item: 'Item', qty: 'Qty', priority: 'Priority', from: 'From Unit', targetUnit: 'Target Unit', reason: 'Reason', placeholderName: 'Full Name', placeholderPhone: 'Phone Number', placeholderSkill: 'e.g. EMT-1', placeholderItem: 'e.g. Sleeping Bag', placeholderFrom: 'e.g. Zone A' },
                 triage: { red: 'Immediate (Red)', yellow: 'Delayed (Yellow)', green: 'Minor (Green)', black: 'Deceased (Black)', desc: 'Rapid sorting based on RPM (Respiration, Perfusion, Mental Status)' },
                 mesh: { active: 'Mesh Network Active', inactive: 'Internet Connected', desc: 'Use Bluetooth/WiFi Direct for proximity relay when infra fails.' },
                 safety: { locationConsentTitle: 'Enable Tracking', locationConsentDesc: 'GPS access required for safety. Data used for mission only.', agree: 'Agree & Enable', heartbeat: 'Heartbeat', connected: 'Connected', location: 'Location Svc', locationOff: 'Off', locationOn: 'Tracking', confirmSOS: 'Confirm SOS Signal?', sosDesc: 'Transmitting coords & audio to Rescue Team.', cancel: 'Cancel', send: 'Send SOS Now' },
@@ -120,6 +120,13 @@
             { id: 'ops', name: '作業組 (Ops)', icon: 'activity', color: 'bg-blue-600' },
             { id: 'log', name: '後勤組 (Log)', icon: 'package', color: 'bg-orange-500' },
             { id: 'vol', name: '志工隊 (Vol)', icon: 'users', color: 'bg-slate-600' },
+        ];
+
+        const TRANSFER_TARGETS = [
+            '中央災害應變中心 (CEOC)',
+            '內政部消防署 (NFA)',
+            '國防部 (MND)',
+            '花蓮縣災害應變中心'
         ];
 
         const SOCIAL_FEED = [
@@ -246,7 +253,7 @@
                     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
-                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v8.1</h1>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v8.2</h1>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
 
@@ -255,7 +262,7 @@
                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{t.login.quickLogin}</h3>
                                 <div className="space-y-3 mb-6">
                                     {ROLES_OPTIONS.map(role => (
-                                        <button key={role.id} onClick={() => onLogin({...role, unit: 'Command Center', name: 'User Demo'})} className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-900 hover:text-white transition-all text-left group">
+                                        <button key={role.id} onClick={() => onLogin({...role, unit: role.id === 'ic' ? '指揮中心' : '作業隊', name: role.id === 'ic' ? '指揮官' : 'User Demo'})} className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-900 hover:text-white transition-all text-left group">
                                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${role.color}`}><i data-lucide={role.icon}></i></div>
                                             <div className="flex-1"><p className="font-bold text-sm">{role.name}</p></div>
                                             <i data-lucide="chevron-right" className="opacity-0 group-hover:opacity-100 transition-all"></i>
@@ -304,13 +311,24 @@
 
         // --- Sub-Views ---
         
-        const DashboardView = ({ stats, lang, onQuickAction }) => {
+        const DashboardView = ({ stats, lang, onQuickAction, isIC, onTransfer }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
-                    <div className="flex justify-between items-end mb-8">
-                        <div><h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2><p className="text-sm text-slate-500 font-medium mt-1">ResQ v8.1 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p></div>
-                        <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+                        <div>
+                            <h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2>
+                            <p className="text-sm text-slate-500 font-medium mt-1">ResQ v8.2 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span></p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="hidden md:flex px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-full text-xs font-bold items-center gap-2 shadow-sm"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
+                            {/* Command Transfer Button for IC */}
+                            {isIC && (
+                                <button onClick={onTransfer} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 border border-slate-700">
+                                    <i data-lucide="arrow-right-left" width="14"></i> {t.actions.transfer}
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         {stats.map((stat, idx) => <StatCard key={idx} {...stat} />)}
@@ -443,6 +461,9 @@
             const [requests, setRequests] = useState([{ id: 1, item: '發電機 5KW', qty: 2, from: 'HQ', status: '待處理', priority: '緊急' }]);
             const [myGear, setMyGear] = useState([{ id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' }]);
             const [borrowedGear, setBorrowedGear] = useState([{ id: 'b1', name: '無線電', source: 'Logistics', status: 'In Use' }]);
+            
+            // Command Transfer State
+            const [commander, setCommander] = useState('林局長');
 
             useEffect(() => { lucide.createIcons(); }, [activeTab, isMeshActive, currentUser, reservations, requests, myGear]);
 
@@ -473,7 +494,7 @@
                 }
             };
 
-            // Handlers (Fixed: restored full functionality)
+            // Handlers
             const handleVolunteerAdd = (e) => { 
                 e.preventDefault(); 
                 const fd = new FormData(e.target);
@@ -506,6 +527,16 @@
 
             const handleGearReturn = (id, isDonating) => { if(confirm('Return?')) { setBorrowedGear(p => p.filter(i => i.id !== id)); addToast('Success', isDonating ? 'Returned & Donated' : 'Returned'); } };
 
+            // Command Transfer Handler
+            const handleTransfer = (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const target = fd.get('target');
+                setCommander(target); // Update commander name
+                addToast('System', `指揮權已移交至: ${target}`, 'info');
+                setIsModalOpen(false);
+            };
+
             const renderContent = () => {
                 const props = { lang, onQuickAction: (action) => {
                     if (action === 'triage') { setModalType('triage'); setIsModalOpen(true); }
@@ -521,7 +552,7 @@
                         { label: TRANSLATIONS[lang].stats.triage, val: '12', unit: 'Case', icon: 'activity', color: 'bg-red-100 text-red-600' }, 
                         { label: TRANSLATIONS[lang].stats.sensors, val: '2', unit: 'Alert', icon: 'radio', color: 'bg-orange-100 text-orange-600' }, 
                         { label: TRANSLATIONS[lang].stats.recycle, val: '89', unit: '%', icon: 'recycle', color: 'bg-green-100 text-green-600' }
-                    ]} {...props} />;
+                    ]} {...props} isIC={currentUser?.id === 'ic'} onTransfer={() => {setModalType('transfer'); setIsModalOpen(true);}} />;
                     case 'medical': return <MedicalView lang={lang} />;
                     case 'social': return <SocialView lang={lang} />;
                     case 'map': return <MapView mapLayers={{hazard:true, resources:true, volunteers:true}} toggleLayer={() => {}} isSharing={isLocationSharing} lang={lang} />;
@@ -548,7 +579,7 @@
                         )}
                         <div className="flex items-center gap-2 font-bold text-slate-800">
                             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                            ResQ v8.1
+                            ResQ v8.2
                         </div>
                     </div>
 
@@ -557,10 +588,11 @@
                         <div className="p-5 border-b border-slate-100 flex flex-col items-start gap-1">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>
-                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v8.1</h1></div>
+                                <div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v8.2</h1></div>
                             </div>
                             <div className="hidden md:block mt-3 w-full">
                                 {currentUser.unit && <div className="bg-slate-50 p-2 rounded text-xs font-bold text-slate-600 mb-2 border border-slate-200"><span className="block text-[8px] text-slate-400 uppercase tracking-widest">Unit</span>{currentUser.unit}</div>}
+                                {currentUser.id === 'ic' && <div className="bg-red-50 p-2 rounded text-xs font-bold text-red-600 mb-2 border border-red-200"><span className="block text-[8px] text-red-400 uppercase tracking-widest">Commander</span>{commander}</div>}
                                 <div className="flex items-center gap-2 mt-2 pl-1">
                                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{TRANSLATIONS[lang].designerLabel}</span>
                                     <a href="mailto:0922693981ab11@gmail.com?subject=[ResQ系統回饋]" className="text-slate-400 hover:text-blue-600 transition-colors" title="Email Designer"><i data-lucide="mail" width="12"></i></a>
@@ -602,8 +634,8 @@
                         <SafetyBar lang={lang} onSOS={() => alert('SOS Sent!')} isSharing={isLocationSharing} toggleSharing={() => { setIsLocationSharing(!isLocationSharing); addToast('GPS', isLocationSharing ? 'Tracking Stopped' : 'Tracking Enabled'); }} isMeshActive={isMeshActive} toggleMesh={() => { setIsMeshActive(!isMeshActive); addToast('Network', !isMeshActive ? 'Switched to Mesh Mode (D2D)' : 'Switched to Internet'); }} />
                     </main>
 
-                    {/* Modal with Correct Form Logic */}
-                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'volunteer' ? TRANSLATIONS[lang].actions.addVolunteer : modalType === 'triage' ? TRANSLATIONS[lang].headers.triage : TRANSLATIONS[lang].actions.submitRequest}>
+                    {/* Modal */}
+                    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'volunteer' ? TRANSLATIONS[lang].actions.addVolunteer : modalType === 'triage' ? TRANSLATIONS[lang].headers.triage : modalType === 'transfer' ? TRANSLATIONS[lang].headers.transferCommand : TRANSLATIONS[lang].actions.submitRequest}>
                         {modalType === 'triage' ? (
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 {['red', 'yellow', 'green', 'black'].map(level => (
@@ -612,6 +644,19 @@
                                     </button>
                                 ))}
                             </div>
+                        ) : modalType === 'transfer' ? (
+                            <form key="transfer" onSubmit={handleTransfer} className="space-y-4">
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.targetUnit}</label>
+                                    <select name="target" className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                        {TRANSFER_TARGETS.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{TRANSLATIONS[lang].form.reason}</label><input required className="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. 災情升級" /></div>
+                                <div className="pt-4 flex justify-end gap-3">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition-colors">{TRANSLATIONS[lang].actions.cancel}</button>
+                                    <button type="submit" className="px-6 py-2 bg-red-600 text-white font-bold text-sm rounded-lg shadow-md hover:bg-red-700 transition-colors">{TRANSLATIONS[lang].actions.confirmTransfer}</button>
+                                </div>
+                            </form>
                         ) : (
                             <form key={modalType} onSubmit={modalType === 'volunteer' ? handleVolunteerAdd : handleLogisticsAdd} className="space-y-4">
                                 {modalType === 'volunteer' ? (
