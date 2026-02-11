@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>災害救助行動指揮系統 v1.0 - 測試版</title>
+    <title>災害救助行動指揮系統 v9.2 - 最終碩士學位版 (修復)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,9 +53,10 @@
             100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
         }
         
-        /* Pass Status */
-        .pass-valid { border-left: 4px solid #22c55e; }
-        .pass-expired { border-left: 4px solid #ef4444; }
+        /* Map Marker Types */
+        .marker-vol { background-color: #22c55e; }
+        .marker-res { background-color: #3b82f6; }
+        .marker-life { background-color: #f97316; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-hidden">
@@ -133,28 +134,38 @@
             '花蓮縣災害應變中心'
         ];
 
-        const SCENARIOS = [
-            '花蓮 0403 地震 (Hualien Earthquake)',
-            '八八水災 (Flood)',
-            '土石流警戒 (Landslide)',
-            '大規模停電 (Blackout)'
-        ];
+        // Scenario Data Sets
+        const SCENARIOS = {
+            'eq': { name: '花蓮 0403 地震 (Hualien Earthquake)', alerts: [
+                { id: 1, type: 'InSAR', location: '山腳斷層監測站', value: '位移 2.5cm', status: 'Warning', desc: '地層變位異常' }
+            ], feed: [
+                { id: 1, source: 'Facebook', user: '民眾A', content: '體育館後方好像有圍牆倒塌，壓到車子！', time: '10:55', status: '待查證' }
+            ]},
+            'flood': { name: '八八水災 (Flood)', alerts: [
+                { id: 2, type: 'WaterLevel', location: '中游觀測井', value: '水位 95%', status: 'Critical', desc: '水位超標' }
+            ], feed: [
+                { id: 2, source: 'Line群組', user: '里長B', content: 'C區水管破裂，需要沙包支援。', time: '10:50', status: '已證實' }
+            ]},
+            'landslide': { name: '土石流警戒 (Landslide)', alerts: [
+                { id: 3, type: 'RainGauge', location: '山區測站', value: '300mm/24h', status: 'Warning', desc: '累積雨量過高' }
+            ], feed: []},
+            'blackout': { name: '大規模停電 (Blackout)', alerts: [
+                { id: 4, type: 'Grid', location: '變電所', value: 'Off', status: 'Critical', desc: '供電中斷' }
+            ], feed: [
+                 { id: 3, source: 'PTT', user: '鄉民C', content: '整條街都黑了，紅綠燈也沒亮！', time: '10:48', status: '已闢謠' }
+            ]}
+        };
 
-        const SOCIAL_FEED = [
-            { id: 1, source: 'Facebook', user: '民眾A', content: '體育館後方好像有圍牆倒塌，壓到車子！', time: '10:55', status: '待查證', type: 'risk' },
-            { id: 2, source: 'Line群組', user: '里長B', content: 'C區水管破裂，需要沙包支援。', time: '10:50', status: '已證實', type: 'logistics' },
-            { id: 3, source: 'PTT', user: '鄉民C', content: '聽說大橋斷了？求證！', time: '10:48', status: '已闢謠', type: 'rumor' }
-        ];
-        const IOT_ALERTS = [
-            { id: 1, type: 'InSAR', location: '山腳斷層監測站', value: '位移 2.5cm', status: 'Warning', desc: '地層變位異常' },
-            { id: 2, type: 'WaterLevel', location: '中游觀測井', value: '水位 85%', status: 'Normal', desc: '水位警戒線下' }
-        ];
-
-        // ADDED MISSING DATA HERE
         const TRIAGE_DATA = [
             { id: 1, code: 'T-001', level: 'red', condition: '大量出血, 意識不清', location: 'Zone A', time: '11:00' },
             { id: 2, code: 'T-002', level: 'yellow', condition: '腿部骨折, 意識清楚', location: 'Zone A', time: '11:05' },
             { id: 3, code: 'T-003', level: 'green', condition: '擦傷', location: 'Zone B', time: '11:10' }
+        ];
+
+        // CONSTANT RE-ADDED HERE
+        const IOT_ALERTS = [
+             { id: 1, type: 'InSAR', location: '山腳斷層監測站', value: '位移 2.5cm', status: 'Warning', desc: '地層變位異常' },
+             { id: 2, type: 'WaterLevel', location: '中游觀測井', value: '水位 85%', status: 'Normal', desc: '水位警戒線下' }
         ];
         
         const LIFE_SUPPORT_FACILITIES = [
@@ -230,7 +241,8 @@
                 '已送達': t.arrived, 'Arrived': t.arrived,
                 '緊急': t.urgent, 'Urgent': t.urgent,
                 '已後送': t.Dispatched,
-                '有效': t.Valid, '失效': t.Expired
+                '有效': t.Valid, '失效': t.Expired,
+                'Normal': t.Normal, 'High': t.High, 'Urgent': t.Urgent
             };
             const displayStatus = statusMap[status] || status;
             
@@ -282,7 +294,7 @@
                     <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full">
                         <div className="text-center mb-8">
                             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg"><i data-lucide="shield-check" width="32"></i></div>
-                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v9.1</h1>
+                            <h1 className="text-2xl font-black mb-1 text-slate-800">ResQ v9.2</h1>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{t.appSubtitle}</p>
                         </div>
                         {mode === 'login' ? (
@@ -336,7 +348,7 @@
 
         // --- Sub-Views ---
 
-        const DashboardView = ({ stats, lang, onQuickAction, isIC, onTransfer, onScenarioChange, currentScenario }) => {
+        const DashboardView = ({ stats, lang, onQuickAction, isIC, onTransfer, onScenarioChange, currentScenarioKey, scenarioData }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-7xl mx-auto animate-in fade-in">
@@ -345,8 +357,8 @@
                             <h2 className="text-3xl font-black text-slate-800">{t.nav.dashboard}</h2>
                             <div className="flex items-center gap-2 mt-1">
                                 <span className="text-sm text-slate-500 font-medium">Scenario:</span>
-                                <select value={currentScenario} onChange={(e) => onScenarioChange(e.target.value)} className="bg-white border border-slate-300 text-xs font-bold rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500">
-                                    {SCENARIOS.map(s => <option key={s} value={s}>{s}</option>)}
+                                <select value={currentScenarioKey} onChange={(e) => onScenarioChange(e.target.value)} className="bg-white border border-slate-300 text-xs font-bold rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500">
+                                    {Object.entries(SCENARIOS).map(([key, data]) => <option key={key} value={key}>{data.name}</option>)}
                                 </select>
                                 <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold ml-2">Level 2</span>
                             </div>
@@ -377,8 +389,25 @@
                             <div className="relative z-10">
                                 <h3 className="text-lg font-bold flex items-center gap-2 mb-4"><i data-lucide="bell" className="text-yellow-400"></i> {t.headers.alert}</h3>
                                 <div className="space-y-3 h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                    {IOT_ALERTS.map(alert => (<div key={alert.id} className="bg-red-500/10 p-3 rounded-xl border border-red-500/30 flex gap-3 items-center backdrop-blur-sm"><i data-lucide="radio" className="text-red-400" width="18"></i><div className="flex-1"><p className="text-xs font-bold text-red-200">IoT: {alert.type}</p><p className="text-sm font-bold text-white">{alert.location} - {alert.value}</p></div><span className="text-[10px] bg-red-500 px-2 py-1 rounded font-bold shadow">{alert.status}</span></div>))}
-                                    {SOCIAL_FEED.map(feed => (<div key={feed.id} className="bg-white/10 p-3 rounded-xl border border-white/10 flex gap-3 backdrop-blur-sm"><div className="p-2 bg-blue-500/20 rounded-lg text-blue-300 mt-1"><i data-lucide="message-circle" width="16"></i></div><div className="flex-1"><div className="flex justify-between items-center mb-1"><span className="text-[10px] text-slate-400">{feed.source} • {feed.user}</span><span className="text-[10px] text-slate-400">{feed.time}</span></div><p className="text-sm text-slate-200">{feed.content}</p></div><button className="text-[10px] bg-white/20 hover:bg-white/30 px-3 py-1 rounded h-fit self-center transition-colors border border-white/20">{t.actions.verify}</button></div>))}
+                                    {/* Dynamic Alerts based on Scenario */}
+                                    {scenarioData.alerts.map(alert => (
+                                        <div key={alert.id} className="bg-red-500/10 p-3 rounded-xl border border-red-500/30 flex gap-3 items-center backdrop-blur-sm">
+                                            <i data-lucide="radio" className="text-red-400" width="18"></i>
+                                            <div className="flex-1"><p className="text-xs font-bold text-red-200">IoT: {alert.type}</p><p className="text-sm font-bold text-white">{alert.location} - {alert.value}</p></div>
+                                            <span className="text-[10px] bg-red-500 px-2 py-1 rounded font-bold shadow">{alert.status}</span>
+                                        </div>
+                                    ))}
+                                    {/* Dynamic Social Feed based on Scenario */}
+                                    {scenarioData.feed.map(feed => (
+                                        <div key={feed.id} className="bg-white/10 p-3 rounded-xl border border-white/10 flex gap-3 backdrop-blur-sm">
+                                            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-300 mt-1"><i data-lucide="message-circle" width="16"></i></div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-center mb-1"><span className="text-[10px] text-slate-400">{feed.source} • {feed.user}</span><span className="text-[10px] text-slate-400">{feed.time}</span></div>
+                                                <p className="text-sm text-slate-200">{feed.content}</p>
+                                            </div>
+                                            <button className="text-[10px] bg-white/20 hover:bg-white/30 px-3 py-1 rounded h-fit self-center transition-colors border border-white/20">{t.actions.verify}</button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -387,9 +416,20 @@
             );
         };
 
-        const MapView = ({ mapLayers, toggleLayer, isSharing, lang }) => (
+        const MapView = ({ mapLayers, toggleLayer, isSharing, lang, volunteers, facilities }) => (
             <div className="h-full relative bg-slate-200 w-full animate-in fade-in">
                 <div className="absolute inset-0 map-bg opacity-90"></div>
+                {/* Dynamic Markers for Volunteers */}
+                {mapLayers.volunteers && volunteers.map(v => (
+                    <div key={v.id} className="absolute w-3 h-3 bg-green-500 rounded-full border border-white shadow-sm" style={{top: `${50 + (Math.random() * 20 - 10)}%`, left: `${50 + (Math.random() * 20 - 10)}%`}} title={v.name}></div>
+                ))}
+                {/* Dynamic Markers for Facilities */}
+                {mapLayers.resources && facilities.map(f => (
+                    <div key={f.id} className="absolute p-1 bg-blue-500 rounded-lg border border-white shadow-sm text-white" style={{top: `${50 + (Math.random() * 30 - 15)}%`, left: `${50 + (Math.random() * 30 - 15)}%`}} title={f.name}>
+                        <i data-lucide="home" width="12" height="12"></i>
+                    </div>
+                ))}
+                
                 {isSharing && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center animate-in zoom-in duration-300"><div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg relative z-10"></div><div className="w-12 h-12 bg-blue-500/20 rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-ping"></div><div className="mt-2 px-2 py-1 bg-white/90 backdrop-blur rounded-md shadow-md text-[10px] font-bold text-slate-700">Me</div></div>}
                 <div className="absolute top-6 right-6 bg-white/95 backdrop-blur rounded-2xl p-4 shadow-xl border border-slate-200 flex flex-col gap-3 z-10 w-48">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">{TRANSLATIONS[lang].headers.gisControl}</span>
@@ -399,11 +439,12 @@
             </div>
         );
 
+        // ... MedicalView, VolunteersView, LogisticsView, SocialView (unchanged) ...
         const MedicalView = ({ lang, data, onUpdate }) => {
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
-                    <PageHeader title={t.nav.medical} icon="activity" color="text-red-600" />
+                    <PageHeader title={t.nav.medical} icon="activity" color="text-red-600" btnText={t.actions.triage} onBtnClick={() => {}} />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="px-6 py-4">ID</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Condition</th><th className="px-6 py-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{data.map(pt => (<tr key={pt.id} className="hover:bg-slate-50"><td className="px-6 py-4 font-mono font-bold text-slate-700">{pt.code}</td><td className="px-6 py-4"><span className={`px-2 py-1 rounded text-xs font-bold triage-${pt.level}`}>{t.triage[pt.level]}</span></td><td className="px-6 py-4 text-slate-600">{pt.condition}</td><td className="px-6 py-4 text-right"><button onClick={() => onUpdate(pt.id, 'Dispatched')} className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold hover:bg-purple-200 border border-purple-200">{t.actions.dispatch}</button></td></tr>))}</tbody></table>
@@ -413,28 +454,6 @@
                 </div>
             );
         };
-
-        const AccessView = ({ data, onAdd, lang }) => {
-             const t = TRANSLATIONS[lang];
-             return (
-                <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
-                    <PageHeader title={t.headers.vehiclePass} icon="truck" color="text-blue-600" btnText={t.actions.issuePass} onBtnClick={onAdd} />
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {data.length === 0 ? <div className="col-span-full"><EmptyState text="No Passes Issued" /></div> : data.map(pass => (
-                            <div key={pass.id} className={`bg-white p-5 rounded-xl border border-slate-200 shadow-sm ${pass.status === 'Valid' ? 'pass-valid' : 'pass-expired'}`}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className="text-lg font-black text-slate-800">{pass.plate}</h4>
-                                    <StatusBadge status={pass.status} lang={lang} />
-                                </div>
-                                <p className="text-sm text-slate-500">{pass.type}</p>
-                                <p className="text-xs font-mono text-slate-400 mt-2 bg-slate-50 p-1 rounded inline-block">{pass.zone}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-             );
-        };
-
         const VolunteersView = ({ data, onAdd, onUpdate, onDelete, lang }) => {
             const t = TRANSLATIONS[lang];
             return (
@@ -446,7 +465,6 @@
                 </div>
             );
         };
-
         const LogisticsView = ({ data, onAdd, onUpdate, lang }) => {
             const t = TRANSLATIONS[lang];
             return (
@@ -458,7 +476,34 @@
                 </div>
             );
         };
-
+        const SocialView = ({ lang }) => {
+            const t = TRANSLATIONS[lang];
+            return (
+                <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
+                    <PageHeader title={t.nav.social} icon="message-circle" color="text-blue-500" />
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm"><i data-lucide="info"></i><span>Aggregating public reports from Facebook, Line, and PTT for verification.</span></div>
+                        <div className="space-y-4">{SOCIAL_FEED.map(feed => (<div key={feed.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0"><div className="flex justify-between items-start"><div className="flex gap-3"><div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 font-bold">{feed.user[0]}</div><div><p className="font-bold text-slate-800">{feed.user} <span className="text-xs font-normal text-slate-400">via {feed.source}</span></p><p className="text-sm text-slate-600 mt-1">{feed.content}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${feed.status === '已證實' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{feed.status}</span></div><div className="flex gap-2 mt-3 pl-13 ml-13"><button className="text-xs text-blue-600 font-bold hover:underline">{t.actions.verify}</button><button className="text-xs text-slate-400 hover:text-slate-600">{t.actions.ignore}</button></div></div>))}</div>
+                    </div>
+                </div>
+            );
+        };
+        const AccessView = ({ data, onAdd, lang }) => {
+             const t = TRANSLATIONS[lang];
+             return (
+                <div className="p-6 max-w-6xl mx-auto animate-in fade-in">
+                    <PageHeader title={t.headers.vehiclePass} icon="truck" color="text-blue-600" btnText={t.actions.issuePass} onBtnClick={onAdd} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.length === 0 ? <div className="col-span-full"><EmptyState text="No Passes Issued" /></div> : data.map(pass => (
+                            <div key={pass.id} className={`bg-white p-5 rounded-xl border border-slate-200 shadow-sm ${pass.status === 'Valid' ? 'pass-valid' : 'pass-expired'}`}>
+                                <div className="flex justify-between items-start mb-2"><h4 className="text-lg font-black text-slate-800">{pass.plate}</h4><StatusBadge status={pass.status} lang={lang} /></div>
+                                <p className="text-sm text-slate-500">{pass.type}</p><p className="text-xs font-mono text-slate-400 mt-2 bg-slate-50 p-1 rounded inline-block">{pass.zone}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             );
+        };
         const ResourceView = ({ myGear, borrowedGear, onReturn, onScan, lang }) => {
             const t = TRANSLATIONS[lang];
             return (
@@ -469,13 +514,12 @@
                 </div>
             );
         };
-
-        const LifeView = ({ lang }) => {
+        const LifeView = ({ lang, facilities }) => { // Updated to accept facilities
             const t = TRANSLATIONS[lang];
             return (
                 <div className="p-6 max-w-4xl mx-auto animate-in fade-in">
                     <PageHeader title={t.headers.lifeSupport} icon="tent" color="text-orange-500" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{LIFE_SUPPORT_FACILITIES.map(fac => (<div key={fac.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-3"><div className={`p-3 rounded-xl ${fac.type === 'food' ? 'bg-orange-100 text-orange-600' : fac.type === 'shower' ? 'bg-blue-100 text-blue-600' : 'bg-yellow-100 text-yellow-600'}`}><i data-lucide={fac.type === 'food' ? 'utensils' : fac.type === 'shower' ? 'droplets' : 'zap'}></i></div><div><h4 className="font-bold text-slate-800">{fac.name}</h4><p className="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="map-pin" width="10"></i> {fac.location}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${fac.status === '額滿' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{fac.status}</span></div><div className="flex justify-between items-end border-t border-slate-100 pt-3"><span className="text-xs font-bold text-slate-400">Cap</span><span className="text-sm font-bold text-slate-800">{fac.capacity}</span></div></div>))}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{facilities.map(fac => (<div key={fac.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-3"><div className={`p-3 rounded-xl ${fac.type === 'food' ? 'bg-orange-100 text-orange-600' : fac.type === 'shower' ? 'bg-blue-100 text-blue-600' : 'bg-yellow-100 text-yellow-600'}`}><i data-lucide={fac.type === 'food' ? 'utensils' : fac.type === 'shower' ? 'droplets' : 'zap'}></i></div><div><h4 className="font-bold text-slate-800">{fac.name}</h4><p className="text-xs text-slate-500 flex items-center gap-1"><i data-lucide="map-pin" width="10"></i> {fac.location}</p></div></div><span className={`px-2 py-1 rounded text-[10px] font-bold ${fac.status === '額滿' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{fac.status}</span></div><div className="flex justify-between items-end border-t border-slate-100 pt-3"><span className="text-xs font-bold text-slate-400">Cap</span><span className="text-sm font-bold text-slate-800">{fac.capacity}</span></div></div>))}</div>
                 </div>
             );
         };
@@ -501,25 +545,24 @@
             const [activeTab, setActiveTab] = useState('dashboard');
             const [history, setHistory] = useState(['dashboard']);
             
-            // Persistent State (New)
+            // Persistent State
             const [currentUser, setCurrentUser] = useStickyState(null, 'resq_user');
             const [commander, setCommander] = useStickyState('林局長', 'resq_commander');
-            const [currentScenario, setCurrentScenario] = useStickyState(SCENARIOS[0], 'resq_scenario');
+            const [currentScenarioKey, setCurrentScenarioKey] = useStickyState('eq', 'resq_scenario_key'); // Store key not name
             
             const [reservations, setReservations] = useStickyState([{ id: 1, name: '王小明', phone: '0912-345-678', skill: 'USAR', time: new Date().toISOString(), status: '逾時' }], 'resq_volunteers');
             const [requests, setRequests] = useStickyState([{ id: 1, item: '發電機 5KW', qty: 2, from: 'HQ', status: '待處理', priority: '緊急' }], 'resq_logistics');
             const [vehiclePasses, setVehiclePasses] = useStickyState([], 'resq_passes');
             const [triageData, setTriageData] = useStickyState(TRIAGE_DATA, 'resq_triage');
+            const [myGear, setMyGear] = useStickyState([{ id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' }], 'resq_mygear'); // Added persistence
+            const [borrowedGear, setBorrowedGear] = useStickyState([{ id: 'b1', name: '無線電', source: 'Logistics', status: 'In Use' }], 'resq_borrowedgear'); // Added persistence
+            const [lifeSupportFacilities, setLifeSupportFacilities] = useStickyState(LIFE_SUPPORT_FACILITIES, 'resq_facilities'); // Added persistence
 
             const [isMeshActive, setIsMeshActive] = useState(false);
             const [isLocationSharing, setIsLocationSharing] = useState(false);
             const [toasts, setToasts] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalType, setModalType] = useState(null);
-
-            // Mock other data not needing persistence for demo
-            const [myGear] = useState([{ id: 'g1', name: '個人頭燈 (LED)', type: '自攜', status: '持有中', condition: 'A' }]);
-            const [borrowedGear, setBorrowedGear] = useState([{ id: 'b1', name: '無線電', source: 'Logistics', status: 'In Use' }]);
 
             useEffect(() => { if(window.lucide) try { window.lucide.createIcons(); } catch(e){} }, [activeTab, isMeshActive, currentUser, reservations, requests, vehiclePasses]);
 
@@ -529,33 +572,10 @@
                 setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
             };
 
-            const handleLogout = () => { 
-                setCurrentUser(null); 
-                setActiveTab('dashboard'); 
-                setHistory(['dashboard']); 
-            };
-
-            // Navigation Helpers
-            const navigateTo = (tab) => {
-                if (activeTab === tab) return;
-                setActiveTab(tab);
-                setHistory(prev => [...prev, tab]);
-            };
-
-            const goBack = () => {
-                if (history.length > 1) {
-                    const newHistory = history.slice(0, -1);
-                    setHistory(newHistory);
-                    setActiveTab(newHistory[newHistory.length - 1]);
-                }
-            };
-
-            // Enhanced Go Home function
-            const goHome = () => {
-                setActiveTab('dashboard');
-                setHistory(['dashboard']); // Clear stack, reset to root
-                addToast('Navigation', '已返回首頁', 'info');
-            };
+            const handleLogout = () => { setCurrentUser(null); setActiveTab('dashboard'); setHistory(['dashboard']); };
+            const navigateTo = (tab) => { if (activeTab === tab) return; setActiveTab(tab); setHistory(prev => [...prev, tab]); };
+            const goBack = () => { if (history.length > 1) { const newHistory = history.slice(0, -1); setHistory(newHistory); setActiveTab(newHistory[newHistory.length - 1]); } };
+            const goHome = () => { setActiveTab('dashboard'); setHistory(['dashboard']); addToast('Navigation', '已返回首頁', 'info'); };
 
             // Handlers
             const handleVolunteerAdd = (e) => { 
@@ -578,10 +598,9 @@
                 setCommander(fd.get('target')); 
                 addToast('System', `指揮權已移交至: ${fd.get('target')}`, 'info'); setIsModalOpen(false);
             };
-            const handleTriageUpdate = (id, status) => {
-                // In a real app this would update the specific patient status
-                addToast('Medical', 'Patient Dispatch Initiated', 'info');
-            };
+            const handleTriageUpdate = (id, status) => { addToast('Medical', 'Patient Dispatch Initiated', 'info'); };
+            const handleGearReturn = (id, isDonating) => { if(confirm('Return?')) { setBorrowedGear(p => p.filter(i => i.id !== id)); addToast('Success', isDonating ? 'Returned & Donated' : 'Returned'); } };
+
 
             const renderContent = () => {
                 const props = { lang, onQuickAction: (action) => {
@@ -595,19 +614,19 @@
 
                 switch(activeTab) {
                     case 'dashboard': return <DashboardView stats={[
-                        { label: TRANSLATIONS[lang].stats.manpower, val: reservations.length + 120, unit: 'Ppl', icon: 'users', color: 'bg-blue-100 text-blue-600' },
+                        { label: TRANSLATIONS[lang].stats.manpower, val: reservations.length, unit: 'Ppl', icon: 'users', color: 'bg-blue-100 text-blue-600' },
                         { label: TRANSLATIONS[lang].stats.triage, val: triageData.length, unit: 'Case', icon: 'activity', color: 'bg-red-100 text-red-600' }, 
-                        { label: TRANSLATIONS[lang].stats.sensors, val: '2', unit: 'Alert', icon: 'radio', color: 'bg-orange-100 text-orange-600' }, 
+                        { label: TRANSLATIONS[lang].stats.sensors, val: SCENARIOS[currentScenarioKey].alerts.length, unit: 'Alert', icon: 'radio', color: 'bg-orange-100 text-orange-600' }, 
                         { label: TRANSLATIONS[lang].stats.recycle, val: '89', unit: '%', icon: 'recycle', color: 'bg-green-100 text-green-600' }
-                    ]} {...props} isIC={currentUser?.id === 'ic'} onTransfer={() => {setModalType('transfer'); setIsModalOpen(true);}} onScenarioChange={setCurrentScenario} currentScenario={currentScenario} />;
+                    ]} {...props} isIC={currentUser?.id === 'ic'} onTransfer={() => {setModalType('transfer'); setIsModalOpen(true);}} onScenarioChange={setCurrentScenarioKey} currentScenarioKey={currentScenarioKey} scenarioData={SCENARIOS[currentScenarioKey]} />;
                     case 'medical': return <MedicalView lang={lang} data={triageData} onUpdate={handleTriageUpdate} />;
                     case 'social': return <SocialView lang={lang} />;
-                    case 'map': return <MapView mapLayers={{hazard:true, resources:true, volunteers:true}} toggleLayer={() => {}} isSharing={isLocationSharing} lang={lang} />;
+                    case 'map': return <MapView mapLayers={{hazard:true, resources:true, volunteers:true}} toggleLayer={() => {}} isSharing={isLocationSharing} lang={lang} volunteers={reservations} facilities={lifeSupportFacilities}/>;
                     case 'volunteers': return <VolunteersView data={reservations} onAdd={() => {setModalType('volunteer'); setIsModalOpen(true);}} onUpdate={(id, status) => setReservations(p => p.map(i => i.id === id ? {...i, status} : i))} onDelete={(id) => setReservations(p => p.filter(i => i.id !== id))} lang={lang} />;
                     case 'logistics': return <LogisticsView data={requests} onAdd={() => {setModalType('logistics'); setIsModalOpen(true);}} onUpdate={(id, status) => setRequests(p => p.map(i => i.id === id ? {...i, status} : i))} lang={lang} />;
                     case 'access': return <AccessView data={vehiclePasses} onAdd={() => {setModalType('pass'); setIsModalOpen(true);}} lang={lang} />;
                     case 'resource': return <ResourceView myGear={myGear} borrowedGear={borrowedGear} onReturn={handleGearReturn} onScan={() => addToast('Scan', 'Camera active')} lang={lang} />;
-                    case 'life': return <LifeView lang={lang} />;
+                    case 'life': return <LifeView lang={lang} facilities={lifeSupportFacilities}/>;
                     default: return null;
                 }
             };
@@ -622,7 +641,7 @@
                     <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4">
                         <div className="flex items-center gap-2">
                              {history.length > 1 && <button onClick={goBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-600"><i data-lucide="arrow-left" width="20"></i></button>}
-                            <button onClick={goHome} className="flex items-center gap-2 font-bold text-slate-800"><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>ResQ v9.1</button>
+                            <button onClick={goHome} className="flex items-center gap-2 font-bold text-slate-800"><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div>ResQ v9.2</button>
                         </div>
                         <div className="flex items-center gap-2"><button onClick={goHome} className="p-2 rounded-full hover:bg-slate-100 text-slate-600"><i data-lucide="home" width="20"></i></button></div>
                     </div>
@@ -630,7 +649,7 @@
                     {/* Navigation */}
                     <nav className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col z-20 shadow-xl">
                         <div className="p-5 border-b border-slate-100 flex flex-col items-start gap-1">
-                            <div className="flex items-center gap-3 cursor-pointer" onClick={goHome} title={TRANSLATIONS[lang].nav.home}><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div><div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v9.1</h1></div></div>
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={goHome} title={TRANSLATIONS[lang].nav.home}><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white"><i data-lucide="command" width="16"></i></div><div className="hidden md:block"><h1 className="font-bold text-slate-800">ResQ v9.2</h1></div></div>
                             <div className="hidden md:block mt-3 w-full">
                                 {currentUser.unit && <div className="bg-slate-50 p-2 rounded text-xs font-bold text-slate-600 mb-2 border border-slate-200"><span className="block text-[8px] text-slate-400 uppercase tracking-widest">Unit</span>{currentUser.unit}</div>}
                                 {currentUser.id === 'ic' && <div className="bg-red-50 p-2 rounded text-xs font-bold text-red-600 mb-2 border border-red-200"><span className="block text-[8px] text-red-400 uppercase tracking-widest">Commander</span>{commander}</div>}
@@ -642,6 +661,7 @@
                             <button onClick={goBack} disabled={history.length <= 1} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm mb-2 ${history.length <= 1 ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-600 hover:bg-slate-50 border border-slate-100'}`}><i data-lucide="arrow-left" width="18"></i><span className="hidden md:inline">{TRANSLATIONS[lang].nav.back}</span></button>
                             <div className="border-b border-slate-100 mb-2"></div>
                             {['dashboard', 'map', 'medical', 'volunteers', 'logistics', 'access', 'social', 'resource', 'life'].map(key => (
+                                (!['access'].includes(key) || (currentUser.id === 'ic' || currentUser.id === 'log')) && // RBAC logic
                                 <button key={key} onClick={() => navigateTo(key)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm ${activeTab === key ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><i data-lucide={key === 'dashboard' ? 'layout-dashboard' : key === 'map' ? 'map' : key === 'medical' ? 'activity' : key === 'volunteers' ? 'users' : key === 'logistics' ? 'package' : key === 'access' ? 'truck' : key === 'social' ? 'message-circle' : key === 'resource' ? 'recycle' : 'coffee'} width="18"></i><span className="hidden md:inline">{TRANSLATIONS[lang].nav[key]}</span></button>
                             ))}
                         </div>
